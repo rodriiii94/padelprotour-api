@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\CompetitionController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas públicas (sin token)
@@ -15,5 +17,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // A partir de aquí van los endpoints de dominio (competitions,
     // categories, registrations, matches, rankings, chat-messages...)
     // según se vayan construyendo los controladores correspondientes.
+    Route::apiResource('competitions', CompetitionController::class);
+    Route::apiResource('competitions.categories', CategoryController::class)->shallow();
 });
-
