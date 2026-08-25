@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ChatMessageController;
 use App\Http\Controllers\Api\CompetitionController;
 use App\Http\Controllers\Api\MatchController;
+use App\Http\Controllers\Api\MatchdayPairingController;
 use App\Http\Controllers\Api\MatchSetController;
 use App\Http\Controllers\Api\PhaseController;
 use App\Http\Controllers\Api\RankingController;
@@ -28,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('categories.registrations', RegistrationController::class)->shallow();
     Route::apiResource('categories.phases', PhaseController::class)->shallow();
     Route::apiResource('phases.matches', MatchController::class)->shallow();
+    Route::apiResource('phases.matchday-pairings', MatchdayPairingController::class)->shallow();
     Route::apiResource('matches.sets', MatchSetController::class)->shallow();
 
     Route::get('/categories/{category}/rankings', [RankingController::class, 'index']);
