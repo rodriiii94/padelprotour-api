@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\MatchSetController;
 use App\Http\Controllers\Api\PhaseController;
 use App\Http\Controllers\Api\RankingController;
 use App\Http\Controllers\Api\RegistrationController;
+use App\Http\Controllers\Api\RoundRobinController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas públicas (sin token)
@@ -30,6 +31,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('categories.phases', PhaseController::class)->shallow();
     Route::apiResource('phases.matches', MatchController::class)->shallow();
     Route::apiResource('phases.matchday-pairings', MatchdayPairingController::class)->shallow();
+    Route::post('/categories/{category}/round-robin', [RoundRobinController::class, 'generate']);
     Route::apiResource('matches.sets', MatchSetController::class)->shallow();
 
     Route::get('/categories/{category}/rankings', [RankingController::class, 'index']);
