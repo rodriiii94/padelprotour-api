@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Database\Factories\CompetitionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -62,5 +64,20 @@ class Competition extends Model
                 ->orWhereHas('pair', fn ($query) => $query->where('player1_id', $user->id)->orWhere('player2_id', $user->id))
             )
             ->exists();
+    }
+
+    /**
+     * Competiciones del usuario: las que organiza, o en las que tiene
+     * una inscripción no rechazada en alguna categoría.
+     */
+    #[Scope]
+    protected function relatedTo(Builder $query, User $user): Builder
+    {
+        return $query->where(fn (Builder $query) => $query->where('organizer_id', $user->id)
+            ->orWhereHas('categories.registrations', fn (Builder $query) => $query
+                ->where('status', '!=', 'rejected')
+                ->forUser($user)
+            )
+        );
     }
 }
