@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\PhaseController;
 use App\Http\Controllers\Api\RankingController;
 use App\Http\Controllers\Api\RegistrationController;
 use App\Http\Controllers\Api\RoundRobinController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas públicas (sin token)
@@ -22,9 +23,12 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:lo
 // Rutas protegidas: exigen "Authorization: Bearer <token>"
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
+    Route::put('/me', [AuthController::class, 'update']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me/registrations', [MeController::class, 'registrations']);
     Route::get('/me/competitions', [MeController::class, 'competitions']);
+
+    Route::get('/users', [UserController::class, 'index']);
 
     // A partir de aquí van los endpoints de dominio (competitions,
     // categories, registrations, matches, rankings, chat-messages...)
