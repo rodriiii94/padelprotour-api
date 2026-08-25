@@ -3,6 +3,9 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CompetitionController;
+use App\Http\Controllers\Api\MatchController;
+use App\Http\Controllers\Api\MatchSetController;
+use App\Http\Controllers\Api\PhaseController;
 use App\Http\Controllers\Api\RegistrationController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,4 +24,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('competitions', CompetitionController::class);
     Route::apiResource('competitions.categories', CategoryController::class)->shallow();
     Route::apiResource('categories.registrations', RegistrationController::class)->shallow();
+    Route::apiResource('categories.phases', PhaseController::class)->shallow();
+    Route::apiResource('phases.matches', MatchController::class)->shallow();
+    Route::apiResource('matches.sets', MatchSetController::class)->shallow();
 });
