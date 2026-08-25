@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CompetitionController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MatchSetController;
 use App\Http\Controllers\Api\PhaseController;
+use App\Http\Controllers\Api\RankingController;
 use App\Http\Controllers\Api\RegistrationController;
 use Illuminate\Support\Facades\Route;
 
@@ -27,4 +28,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('categories.phases', PhaseController::class)->shallow();
     Route::apiResource('phases.matches', MatchController::class)->shallow();
     Route::apiResource('matches.sets', MatchSetController::class)->shallow();
+
+    Route::get('/categories/{category}/rankings', [RankingController::class, 'index']);
+    Route::post('/categories/{category}/rankings/recalculate', [RankingController::class, 'recalculate']);
 });
