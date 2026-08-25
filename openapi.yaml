@@ -106,6 +106,55 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/User" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+    put:
+      tags: [Auth]
+      summary: Update your own profile
+      description: >
+        Only name/level/club are editable here. email and password are
+        intentionally not accepted by this endpoint (changing either
+        without re-authentication would be an account-takeover risk) —
+        any such fields in the request body are silently ignored.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 255 }
+                level: { type: string, nullable: true, example: "3ª" }
+                club: { type: string, nullable: true }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /users:
+    get:
+      tags: [Me]
+      summary: Search players by name or email
+      description: >
+        Useful to find a partner's user id before creating a Pair.
+        `search` is required (min 2 characters) — there is no way to list
+        the full user directory unfiltered. Returns at most 20 matches.
+      parameters:
+        - name: search
+          in: query
+          required: true
+          schema: { type: string, minLength: 2 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /me/registrations:
     get:

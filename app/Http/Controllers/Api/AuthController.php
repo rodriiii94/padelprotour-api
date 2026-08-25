@@ -72,4 +72,20 @@ class AuthController extends Controller
     {
         return response()->json($request->user());
     }
+
+    public function update(Request $request)
+    {
+        // Email y password se quedan fuera a propósito: cambiarlos aquí sin
+        // reautenticación (contraseña actual, verificación de email...)
+        // abriría una vía fácil de secuestro de cuenta.
+        $validated = $request->validate([
+            'name' => ['sometimes', 'string', 'max:255'],
+            'level' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'club' => ['sometimes', 'nullable', 'string', 'max:255'],
+        ]);
+
+        $request->user()->update($validated);
+
+        return $request->user();
+    }
 }
