@@ -1,0 +1,1141 @@
+openapi: 3.0.3
+info:
+  title: PadelProTour API
+  description: >
+    API for managing padel tournaments and leagues: competitions, categories,
+    pairs, registrations, phases, matches, match sets, rankings, matchday
+    pairings (individual-rotating leagues), and a real-time competition chat.
+    Authentication is Bearer-token only (Laravel Sanctum, one token per
+    device) — there is no cookie/session-based auth, since clients are
+    mobile/Expo apps.
+  version: "1.0.0"
+servers:
+  - url: /api
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+  - name: Me
+  - name: Pairs
+  - name: Competitions
+  - name: Categories
+  - name: Registrations
+  - name: Phases
+  - name: Round Robin
+  - name: Matches
+  - name: Match Sets
+  - name: Matchday Pairings
+  - name: Rankings
+  - name: Chat Messages
+
+paths:
+  /register:
+    post:
+      tags: [Auth]
+      summary: Create an account and receive a token
+      security: []
+      description: Rate limited to 5 requests/minute per IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, device_name]
+              properties:
+                name: { type: string, maxLength: 255 }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                device_name: { type: string, example: "iphone-de-marta" }
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthToken" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /login:
+    post:
+      tags: [Auth]
+      summary: Exchange credentials for a token
+      security: []
+      description: >
+        Rate limited to 5 requests/minute per email+IP combination. Logging
+        in again with the same device_name revokes the previous token for
+        that device.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, device_name]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+                device_name: { type: string }
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthToken" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /logout:
+    post:
+      tags: [Auth]
+      summary: Revoke the current access token
+      responses:
+        "204": { description: Logged out }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /me:
+    get:
+      tags: [Auth]
+      summary: The authenticated user
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /me/registrations:
+    get:
+      tags: [Me]
+      summary: My registrations (as an individual player or via a pair)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Registration" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /me/competitions:
+    get:
+      tags: [Me]
+      summary: Competitions I organize or participate in
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Competition" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /pairs:
+    get:
+      tags: [Pairs]
+      summary: Pairs I belong to
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Pair" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Pairs]
+      summary: Form a pair with another player
+      description: The authenticated user is always one side of the pair.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [partner_id]
+              properties:
+                partner_id: { type: integer }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pair" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /pairs/{pair}:
+    parameters:
+      - $ref: "#/components/parameters/PairId"
+    get:
+      tags: [Pairs]
+      summary: View a pair
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Pair" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /competitions:
+    get:
+      tags: [Competitions]
+      summary: List competitions (paginated, 15/page)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedCompetitions" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Competitions]
+      summary: Create a competition
+      description: The authenticated user becomes the organizer.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompetitionInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Competition" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /competitions/{competition}:
+    parameters:
+      - $ref: "#/components/parameters/CompetitionId"
+    get:
+      tags: [Competitions]
+      summary: View a competition
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Competition" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Competitions]
+      summary: Update a competition (organizer only)
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompetitionInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Competition" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Competitions]
+      summary: Delete a competition (organizer only)
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /competitions/{competition}/categories:
+    parameters:
+      - $ref: "#/components/parameters/CompetitionId"
+    get:
+      tags: [Categories]
+      summary: List a competition's categories
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Category" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Categories]
+      summary: Create a category (organizer only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CategoryInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /categories/{category}:
+    parameters:
+      - $ref: "#/components/parameters/CategoryId"
+    get:
+      tags: [Categories]
+      summary: View a category
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Categories]
+      summary: Update a category (organizer only)
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CategoryInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Categories]
+      summary: Delete a category (organizer only)
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /categories/{category}/registrations:
+    parameters:
+      - $ref: "#/components/parameters/CategoryId"
+    get:
+      tags: [Registrations]
+      summary: List a category's registrations (paginated, 15/page)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedRegistrations" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Registrations]
+      summary: Register a pair or yourself for a category
+      description: >
+        Send `pair_id` for fixed-pair categories (you must be one of the two
+        players) or `player_id` for individual_rotating categories (must
+        equal your own id) — never both. Rejected if the competition's
+        registration_closes_at has passed, or if already registered.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pair_id: { type: integer, nullable: true }
+                player_id: { type: integer, nullable: true }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Registration" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /registrations/{registration}:
+    parameters:
+      - $ref: "#/components/parameters/RegistrationId"
+    get:
+      tags: [Registrations]
+      summary: View a registration
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Registration" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Registrations]
+      summary: Change a registration's status (organizer only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: "#/components/schemas/RegistrationStatus" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Registration" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Registrations]
+      summary: Withdraw a registration
+      description: The organizer can always withdraw one; the registrant only while it is still "pending".
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /categories/{category}/phases:
+    parameters:
+      - $ref: "#/components/parameters/CategoryId"
+    get:
+      tags: [Phases]
+      summary: List a category's phases, ordered
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Phase" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Phases]
+      summary: Create a phase (organizer only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PhaseInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Phase" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /phases/{phase}:
+    parameters:
+      - $ref: "#/components/parameters/PhaseId"
+    get:
+      tags: [Phases]
+      summary: View a phase
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Phase" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Phases]
+      summary: Update a phase (organizer only)
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PhaseInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Phase" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Phases]
+      summary: Delete a phase (organizer only)
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /categories/{category}/round-robin:
+    parameters:
+      - $ref: "#/components/parameters/CategoryId"
+    post:
+      tags: [Round Robin]
+      summary: Generate a full league schedule (organizer only)
+      description: >
+        Fixed-pair league categories only. Creates one `matchday` phase per
+        round (circle method) from the category's confirmed pair
+        registrations, so every pair faces every other pair exactly once.
+        An odd number of pairs gets an automatic bye each round. Fails if
+        the competition isn't a league, the category isn't fixed-pair,
+        there are fewer than 2 confirmed pairs, or matchday phases already
+        exist for this category.
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Phase" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /phases/{phase}/matches:
+    parameters:
+      - $ref: "#/components/parameters/PhaseId"
+    get:
+      tags: [Matches]
+      summary: List a phase's matches (paginated, 15/page)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedMatches" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Matches]
+      summary: Schedule a match (organizer only)
+      description: The four player ids must be distinct.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MatchInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Match" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /matches/{match}:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    get:
+      tags: [Matches]
+      summary: View a match (includes its match_sets)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Match" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Matches]
+      summary: Update a match (organizer only)
+      description: >
+        Setting status=completed requires winner_side (1 or 2) in the same
+        request.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scheduled_at: { type: string, format: date-time, nullable: true }
+                court: { type: string, nullable: true }
+                status: { $ref: "#/components/schemas/MatchStatus" }
+                winner_side: { type: integer, enum: [1, 2], nullable: true }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Match" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Matches]
+      summary: Delete a match (organizer only)
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /matches/{match}/sets:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    get:
+      tags: [Match Sets]
+      summary: List a match's sets, ordered by set_number
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MatchSet" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Match Sets]
+      summary: Record a set score (organizer only)
+      description: Rejected if a set with the same set_number already exists for this match.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [set_number, side1_games, side2_games]
+              properties:
+                set_number: { type: integer, minimum: 1 }
+                side1_games: { type: integer, minimum: 0 }
+                side2_games: { type: integer, minimum: 0 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MatchSet" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /sets/{set}:
+    parameters:
+      - $ref: "#/components/parameters/SetId"
+    get:
+      tags: [Match Sets]
+      summary: View a set
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MatchSet" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Match Sets]
+      summary: Correct a set's score (organizer only)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                side1_games: { type: integer, minimum: 0 }
+                side2_games: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MatchSet" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Match Sets]
+      summary: Delete a set (organizer only)
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /phases/{phase}/matchday-pairings:
+    parameters:
+      - $ref: "#/components/parameters/PhaseId"
+    get:
+      tags: [Matchday Pairings]
+      summary: List a matchday's partner pairings
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MatchdayPairing" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [Matchday Pairings]
+      summary: Pair two players for a matchday (organizer only)
+      description: >
+        Only for `matchday`-type phases in `individual_rotating` categories.
+        Neither player may already be paired (as either player1 or player2)
+        elsewhere in the same phase.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [player1_id, player2_id]
+              properties:
+                player1_id: { type: integer }
+                player2_id: { type: integer }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MatchdayPairing" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /matchday-pairings/{matchday_pairing}:
+    parameters:
+      - $ref: "#/components/parameters/MatchdayPairingId"
+    get:
+      tags: [Matchday Pairings]
+      summary: View a matchday pairing
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MatchdayPairing" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Matchday Pairings]
+      summary: Change a matchday pairing (organizer only)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                player1_id: { type: integer }
+                player2_id: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MatchdayPairing" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Matchday Pairings]
+      summary: Delete a matchday pairing (organizer only)
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /categories/{category}/rankings:
+    parameters:
+      - $ref: "#/components/parameters/CategoryId"
+    get:
+      tags: [Rankings]
+      summary: The category's current ranking snapshot, ordered by position
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Ranking" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /categories/{category}/rankings/recalculate:
+    parameters:
+      - $ref: "#/components/parameters/CategoryId"
+    post:
+      tags: [Rankings]
+      summary: Recalculate the ranking (organizer only)
+      description: >
+        Win=3pts/loss=0. Only counts completed matches from group/matchday
+        phases. Tiebreak: head-to-head (2-way ties only) → set difference →
+        game difference → total games won. Replaces the category's previous
+        ranking snapshot with a fresh one.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Ranking" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /competitions/{competition}/chat-messages:
+    parameters:
+      - $ref: "#/components/parameters/CompetitionId"
+    get:
+      tags: [Chat Messages]
+      summary: List chat messages (paginated, 30/page, newest first)
+      description: Organizer or anyone with a non-rejected registration in the competition.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedChatMessages" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Chat Messages]
+      summary: Post a chat message
+      description: >
+        Broadcasts a `message.sent` event on the private `chat.competition.{id}`
+        WebSocket channel (Laravel Reverb) to every subscriber authorized on
+        that channel.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, maxLength: 2000 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatMessage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /chat-messages/{chat_message}:
+    parameters:
+      - $ref: "#/components/parameters/ChatMessageId"
+    delete:
+      tags: [Chat Messages]
+      summary: Delete a chat message
+      description: The organizer can delete any message; the author can delete their own.
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Sanctum personal access token, as returned by /register or /login.
+
+  parameters:
+    PairId: { name: pair, in: path, required: true, schema: { type: integer } }
+    CompetitionId: { name: competition, in: path, required: true, schema: { type: integer } }
+    CategoryId: { name: category, in: path, required: true, schema: { type: integer } }
+    RegistrationId: { name: registration, in: path, required: true, schema: { type: integer } }
+    PhaseId: { name: phase, in: path, required: true, schema: { type: integer } }
+    MatchId: { name: match, in: path, required: true, schema: { type: integer } }
+    SetId: { name: set, in: path, required: true, schema: { type: integer } }
+    MatchdayPairingId: { name: matchday_pairing, in: path, required: true, schema: { type: integer } }
+    ChatMessageId: { name: chat_message, in: path, required: true, schema: { type: integer } }
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Authenticated, but not allowed to perform this action
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: No record matches the given id
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ValidationError:
+      description: Invalid input, or a business rule was violated
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ValidationError" }
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        message: { type: string }
+
+    ValidationError:
+      type: object
+      properties:
+        message: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+        level: { type: string, nullable: true, example: "3ª" }
+        club: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AuthToken:
+      type: object
+      properties:
+        user: { $ref: "#/components/schemas/User" }
+        token: { type: string }
+
+    Pair:
+      type: object
+      properties:
+        id: { type: integer }
+        player1_id: { type: integer }
+        player2_id: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CompetitionType:
+      type: string
+      enum: [tournament, league]
+
+    CompetitionInput:
+      type: object
+      required: [type, name, start_date]
+      properties:
+        type: { $ref: "#/components/schemas/CompetitionType" }
+        name: { type: string, maxLength: 255 }
+        venue: { type: string, nullable: true }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date, nullable: true }
+        registration_closes_at: { type: string, format: date-time, nullable: true }
+
+    Competition:
+      allOf:
+        - $ref: "#/components/schemas/CompetitionInput"
+        - type: object
+          properties:
+            id: { type: integer }
+            organizer_id: { type: integer }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+
+    RegistrationMode:
+      type: string
+      nullable: true
+      enum: [fixed_pair, individual_rotating, null]
+      description: null or "fixed_pair" behave the same (pareja fija); only "individual_rotating" changes how registrations/matchday pairings work.
+
+    CategoryInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 255 }
+        match_format: { type: string, nullable: true, example: "3 sets, super tie-break" }
+        slots: { type: integer, nullable: true, minimum: 1 }
+        registration_mode: { $ref: "#/components/schemas/RegistrationMode" }
+
+    Category:
+      allOf:
+        - $ref: "#/components/schemas/CategoryInput"
+        - type: object
+          properties:
+            id: { type: integer }
+            competition_id: { type: integer }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+
+    RegistrationStatus:
+      type: string
+      enum: [pending, confirmed, waitlisted, rejected]
+
+    Registration:
+      type: object
+      properties:
+        id: { type: integer }
+        category_id: { type: integer }
+        pair_id: { type: integer, nullable: true }
+        player_id: { type: integer, nullable: true }
+        status: { $ref: "#/components/schemas/RegistrationStatus" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    PhaseType:
+      type: string
+      enum: [group, elimination_round, matchday]
+
+    PhaseInput:
+      type: object
+      required: [type, name, order]
+      properties:
+        type: { $ref: "#/components/schemas/PhaseType" }
+        name: { type: string, maxLength: 255 }
+        order: { type: integer, minimum: 1 }
+
+    Phase:
+      allOf:
+        - $ref: "#/components/schemas/PhaseInput"
+        - type: object
+          properties:
+            id: { type: integer }
+            category_id: { type: integer }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+            matches:
+              type: array
+              items: { $ref: "#/components/schemas/Match" }
+              description: Only present on responses that eager-load it (e.g. round-robin generation).
+
+    MatchStatus:
+      type: string
+      enum: [scheduled, in_progress, pending_validation, completed]
+
+    MatchInput:
+      type: object
+      required: [side1_player1_id, side1_player2_id, side2_player1_id, side2_player2_id]
+      properties:
+        side1_player1_id: { type: integer }
+        side1_player2_id: { type: integer }
+        side2_player1_id: { type: integer }
+        side2_player2_id: { type: integer }
+        scheduled_at: { type: string, format: date-time, nullable: true }
+        court: { type: string, nullable: true }
+
+    Match:
+      allOf:
+        - $ref: "#/components/schemas/MatchInput"
+        - type: object
+          properties:
+            id: { type: integer }
+            phase_id: { type: integer }
+            status: { $ref: "#/components/schemas/MatchStatus" }
+            winner_side: { type: integer, enum: [1, 2], nullable: true }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+            match_sets:
+              type: array
+              items: { $ref: "#/components/schemas/MatchSet" }
+              description: Only present on GET /matches/{match}.
+
+    MatchSet:
+      type: object
+      properties:
+        id: { type: integer }
+        match_id: { type: integer }
+        set_number: { type: integer }
+        side1_games: { type: integer }
+        side2_games: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    MatchdayPairing:
+      type: object
+      properties:
+        id: { type: integer }
+        phase_id: { type: integer }
+        player1_id: { type: integer }
+        player2_id: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Ranking:
+      type: object
+      properties:
+        id: { type: integer }
+        category_id: { type: integer }
+        pair_id: { type: integer, nullable: true }
+        player_id: { type: integer, nullable: true }
+        points: { type: integer }
+        position: { type: integer }
+        calculated_at: { type: string, format: date-time }
+
+    ChatMessage:
+      type: object
+      properties:
+        id: { type: integer }
+        competition_id: { type: integer }
+        author_id: { type: integer }
+        body: { type: string }
+        author:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    PaginationMeta:
+      type: object
+      properties:
+        current_page: { type: integer }
+        last_page: { type: integer }
+        per_page: { type: integer }
+        total: { type: integer }
+
+    PaginatedCompetitions:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            data:
+              type: array
+              items: { $ref: "#/components/schemas/Competition" }
+
+    PaginatedRegistrations:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            data:
+              type: array
+              items: { $ref: "#/components/schemas/Registration" }
+
+    PaginatedMatches:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            data:
+              type: array
+              items: { $ref: "#/components/schemas/Match" }
+
+    PaginatedChatMessages:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            data:
+              type: array
+              items: { $ref: "#/components/schemas/ChatMessage" }
