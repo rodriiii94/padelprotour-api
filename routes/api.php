@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CompetitionController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MatchdayPairingController;
 use App\Http\Controllers\Api\MatchSetController;
+use App\Http\Controllers\Api\PairController;
 use App\Http\Controllers\Api\PhaseController;
 use App\Http\Controllers\Api\RankingController;
 use App\Http\Controllers\Api\RegistrationController;
@@ -25,6 +26,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // A partir de aquí van los endpoints de dominio (competitions,
     // categories, registrations, matches, rankings, chat-messages...)
     // según se vayan construyendo los controladores correspondientes.
+    Route::apiResource('pairs', PairController::class)->only(['index', 'store', 'show']);
+
     Route::apiResource('competitions', CompetitionController::class);
     Route::apiResource('competitions.categories', CategoryController::class)->shallow();
     Route::apiResource('categories.registrations', RegistrationController::class)->shallow();
