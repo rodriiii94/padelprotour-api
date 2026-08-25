@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CompetitionController;
+use App\Http\Controllers\Api\RegistrationController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas públicas (sin token)
@@ -19,4 +20,5 @@ Route::middleware('auth:sanctum')->group(function () {
     // según se vayan construyendo los controladores correspondientes.
     Route::apiResource('competitions', CompetitionController::class);
     Route::apiResource('competitions.categories', CategoryController::class)->shallow();
+    Route::apiResource('categories.registrations', RegistrationController::class)->shallow();
 });
