@@ -46,4 +46,12 @@ class CompetitionPolicy
     {
         return $user->id === $competition->organizer_id;
     }
+
+    /**
+     * Determine whether the user can read/post in the competition chat.
+     */
+    public function participate(User $user, Competition $competition): bool
+    {
+        return $competition->hasParticipant($user);
+    }
 }

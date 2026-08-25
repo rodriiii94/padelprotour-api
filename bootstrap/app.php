@@ -12,6 +12,13 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    // Esta API no usa sesión/cookie (los clientes son Expo/móvil con
+    // token Bearer), así que el canal de broadcasting se autentica con
+    // el mismo guard `sanctum` que el resto de la API, no con `web`.
+    ->withBroadcasting(
+        __DIR__.'/../routes/channels.php',
+        ['middleware' => ['auth:sanctum']],
+    )
     ->withMiddleware(function (Middleware $middleware): void {
         //
     })

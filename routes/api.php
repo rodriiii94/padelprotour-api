@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ChatMessageController;
 use App\Http\Controllers\Api\CompetitionController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MatchSetController;
@@ -31,4 +32,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/categories/{category}/rankings', [RankingController::class, 'index']);
     Route::post('/categories/{category}/rankings/recalculate', [RankingController::class, 'recalculate']);
+
+    Route::apiResource('competitions.chat-messages', ChatMessageController::class)
+        ->shallow()
+        ->only(['index', 'store', 'destroy']);
 });

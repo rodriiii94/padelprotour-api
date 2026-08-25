@@ -43,4 +43,24 @@ class Competition extends Model
     {
         return $this->hasMany(ChatMessage::class);
     }
+
+    /**
+     * El organizador, o cualquier usuario con una inscripción no
+     * rechazada (como pareja o individual) en alguna categoría de la
+     * competición.
+     */
+    public function hasParticipant(User $user): bool
+    {
+        if ($this->organizer_id === $user->id) {
+            return true;
+        }
+
+        return Registration::query()
+            ->whereHas('category', fn ($query) => $query->where('competition_id', $this->id))
+            ->where('status', '!=', 'rejected')
+            ->where(fn ($query) => $query->where('player_id', $user->id)
+                ->orWhereHas('pair', fn ($query) => $query->where('player1_id', $user->id)->orWhere('player2_id', $user->id))
+            )
+            ->exists();
+    }
 }
