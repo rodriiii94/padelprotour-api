@@ -19,6 +19,9 @@ class MeController extends Controller
 
     public function competitions(Request $request)
     {
-        return Competition::relatedTo($request->user())->latest()->get();
+        return Competition::relatedTo($request->user())
+            ->latest()
+            ->get()
+            ->each->revealInviteTokenFor($request->user());
     }
 }

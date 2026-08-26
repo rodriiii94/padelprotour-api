@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ChatMessageController;
 use App\Http\Controllers\Api\CompetitionController;
+use App\Http\Controllers\Api\InviteController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MatchdayPairingController;
 use App\Http\Controllers\Api\MatchSetController;
@@ -34,6 +35,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // categories, registrations, matches, rankings, chat-messages...)
     // según se vayan construyendo los controladores correspondientes.
     Route::apiResource('pairs', PairController::class)->only(['index', 'store', 'show']);
+
+    Route::get('/invites/{token}', [InviteController::class, 'show'])->middleware('throttle:invite');
 
     Route::apiResource('competitions', CompetitionController::class);
     Route::apiResource('competitions.categories', CategoryController::class)->shallow();

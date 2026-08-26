@@ -234,10 +234,37 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /invites/{token}:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Competitions]
+      summary: Resolve an invite link
+      description: >
+        Looks up a competition by its invite_token, bypassing the normal
+        view policy (which would reject a private competition to someone
+        who isn't a participant yet) — knowing the token is itself the
+        authorization. Does not register the caller for anything; use the
+        normal POST /categories/{category}/registrations flow afterward.
+        Rate limited to 10 requests/minute per user.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Competition" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /competitions:
     get:
       tags: [Competitions]
-      summary: List competitions (paginated, 15/page)
+      summary: List public competitions (paginated, 15/page)
+      description: Excludes private competitions (is_private=true), even the caller's own. Use GET /me/competitions to see those.
       responses:
         "200":
           description: OK
@@ -269,6 +296,7 @@ paths:
     get:
       tags: [Competitions]
       summary: View a competition
+      description: 403 if the competition is private and the caller is neither the organizer nor a participant. See GET /invites/{token} to gain access via a share link.
       responses:
         "200":
           description: OK
@@ -276,6 +304,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Competition" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [Competitions]
@@ -990,6 +1019,10 @@ components:
         start_date: { type: string, format: date }
         end_date: { type: string, format: date, nullable: true }
         registration_closes_at: { type: string, format: date-time, nullable: true }
+        is_private:
+          type: boolean
+          default: false
+          description: Private competitions are excluded from GET /competitions and require an invite link (or being the organizer/a participant) to view.
 
     Competition:
       allOf:
@@ -998,6 +1031,16 @@ components:
           properties:
             id: { type: integer }
             organizer_id: { type: integer }
+            invite_token:
+              type: string
+              nullable: true
+              readOnly: true
+              description: >
+                Only present in the response when the caller is the
+                organizer (hidden by default, revealed conditionally by the
+                backend). Not present at all for other viewers, not just
+                null. Use it to build a share link consumed via
+                GET /invites/{token}.
             created_at: { type: string, format: date-time }
             updated_at: { type: string, format: date-time }
 

@@ -20,7 +20,7 @@ class CompetitionPolicy
      */
     public function view(User $user, Competition $competition): bool
     {
-        return true;
+        return ! $competition->is_private || $competition->hasParticipant($user);
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Database\Factories\CompetitionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,7 +12,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['type', 'name', 'venue', 'start_date', 'end_date', 'organizer_id', 'registration_closes_at'])]
+#[Fillable(['type', 'name', 'venue', 'start_date', 'end_date', 'organizer_id', 'registration_closes_at', 'is_private', 'invite_token'])]
+#[Hidden(['invite_token'])]
 class Competition extends Model
 {
     /** @use HasFactory<CompetitionFactory> */
@@ -28,6 +30,7 @@ class Competition extends Model
             'start_date' => 'date',
             'end_date' => 'date',
             'registration_closes_at' => 'datetime',
+            'is_private' => 'boolean',
         ];
     }
 
@@ -64,6 +67,19 @@ class Competition extends Model
                 ->orWhereHas('pair', fn ($query) => $query->where('player1_id', $user->id)->orWhere('player2_id', $user->id))
             )
             ->exists();
+    }
+
+    /**
+     * `invite_token` está oculto por defecto (#[Hidden]): solo el
+     * organizador necesita verlo para poder compartirlo.
+     */
+    public function revealInviteTokenFor(?User $user): static
+    {
+        if ($user && $user->id === $this->organizer_id) {
+            $this->makeVisible('invite_token');
+        }
+
+        return $this;
     }
 
     /**
