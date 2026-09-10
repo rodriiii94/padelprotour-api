@@ -80,6 +80,29 @@ test('completing a match requires a winner side', function () {
         ->assertJsonFragment(['status' => 'completed', 'winner_side' => 1]);
 });
 
+test('viewing a match embeds all four players', function () {
+    $organizer = User::factory()->create();
+    $competition = Competition::factory()->create(['organizer_id' => $organizer->id]);
+    $category = Category::factory()->create(['competition_id' => $competition->id]);
+    $phase = Phase::factory()->create(['category_id' => $category->id]);
+    $players = User::factory()->count(4)->create();
+    $match = PadelMatch::factory()->create([
+        'phase_id' => $phase->id,
+        'side1_player1_id' => $players[0]->id,
+        'side1_player2_id' => $players[1]->id,
+        'side2_player1_id' => $players[2]->id,
+        'side2_player2_id' => $players[3]->id,
+    ]);
+    Sanctum::actingAs($organizer);
+
+    $json = getJson("/api/matches/{$match->id}")->assertOk()->json();
+
+    expect($json['side1_player1']['id'])->toBe($players[0]->id)
+        ->and($json['side1_player2']['id'])->toBe($players[1]->id)
+        ->and($json['side2_player1']['id'])->toBe($players[2]->id)
+        ->and($json['side2_player2']['id'])->toBe($players[3]->id);
+});
+
 test('a non organizer cannot update or delete a match', function () {
     $competition = Competition::factory()->create();
     $category = Category::factory()->create(['competition_id' => $competition->id]);

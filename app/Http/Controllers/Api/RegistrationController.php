@@ -15,7 +15,10 @@ class RegistrationController extends Controller
     {
         $this->authorize('viewAny', Registration::class);
 
-        return $category->registrations()->latest()->paginate(15);
+        return $category->registrations()
+            ->with(['player:id,name', 'pair.player1:id,name', 'pair.player2:id,name'])
+            ->latest()
+            ->paginate(15);
     }
 
     public function store(Request $request, Category $category)
@@ -67,7 +70,7 @@ class RegistrationController extends Controller
     {
         $this->authorize('view', $registration);
 
-        return $registration;
+        return $registration->load(['player:id,name', 'pair.player1:id,name', 'pair.player2:id,name']);
     }
 
     public function update(Request $request, Registration $registration)

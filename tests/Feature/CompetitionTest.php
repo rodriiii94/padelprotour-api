@@ -47,6 +47,19 @@ test('any authenticated user can list and view competitions', function () {
     getJson("/api/competitions/{$competition->id}")->assertOk();
 });
 
+test('the upcoming filter excludes competitions that already finished', function () {
+    Sanctum::actingAs(User::factory()->create());
+    $finished = Competition::factory()->create(['end_date' => now()->subDay()->toDateString()]);
+    $ongoing = Competition::factory()->create(['end_date' => null]);
+    $future = Competition::factory()->create(['end_date' => now()->addWeek()->toDateString()]);
+
+    $ids = collect(getJson('/api/competitions?upcoming=1')->assertOk()->json('data'))->pluck('id');
+
+    expect($ids)->not->toContain($finished->id)
+        ->toContain($ongoing->id)
+        ->toContain($future->id);
+});
+
 test('the organizer can update their competition', function () {
     $organizer = User::factory()->create();
     $competition = Competition::factory()->create(['organizer_id' => $organizer->id]);

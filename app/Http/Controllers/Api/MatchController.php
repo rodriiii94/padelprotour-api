@@ -13,7 +13,10 @@ class MatchController extends Controller
     {
         $this->authorize('view', $phase->category->competition);
 
-        return $phase->matches()->orderBy('scheduled_at')->paginate(15);
+        return $phase->matches()
+            ->with(['side1Player1:id,name', 'side1Player2:id,name', 'side2Player1:id,name', 'side2Player2:id,name'])
+            ->orderBy('scheduled_at')
+            ->paginate(15);
     }
 
     public function store(Request $request, Phase $phase)
@@ -41,7 +44,13 @@ class MatchController extends Controller
     {
         $this->authorize('view', $match->phase->category->competition);
 
-        return $match->load('matchSets');
+        return $match->load([
+            'matchSets',
+            'side1Player1:id,name',
+            'side1Player2:id,name',
+            'side2Player1:id,name',
+            'side2Player2:id,name',
+        ]);
     }
 
     public function update(Request $request, PadelMatch $match)

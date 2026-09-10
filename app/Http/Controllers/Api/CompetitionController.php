@@ -13,7 +13,10 @@ class CompetitionController extends Controller
     {
         $this->authorize('viewAny', Competition::class);
 
-        $competitions = Competition::where('is_private', false)->latest()->paginate(15);
+        $competitions = Competition::where('is_private', false)
+            ->when($request->boolean('upcoming'), fn ($query) => $query->upcoming())
+            ->latest()
+            ->paginate(15);
         $competitions->getCollection()->each->revealInviteTokenFor($request->user());
 
         return $competitions;

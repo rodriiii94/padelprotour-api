@@ -96,4 +96,15 @@ class Competition extends Model
             )
         );
     }
+
+    /**
+     * No finalizadas: sin `end_date`, o con `end_date` de hoy en adelante.
+     */
+    #[Scope]
+    protected function upcoming(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $query) => $query->whereNull('end_date')
+            ->orWhere('end_date', '>=', today())
+        );
+    }
 }

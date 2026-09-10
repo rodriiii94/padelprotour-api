@@ -154,3 +154,28 @@ test('an unrelated user cannot withdraw someone else\'s registration', function 
 
     deleteJson("/api/registrations/{$registration->id}")->assertForbidden();
 });
+
+test('a pair registration embeds both players', function () {
+    $category = Category::factory()->create(['registration_mode' => null]);
+    $user = User::factory()->create(['name' => 'Ana']);
+    $partner = User::factory()->create(['name' => 'Luis']);
+    $pair = Pair::factory()->create(['player1_id' => $user->id, 'player2_id' => $partner->id]);
+    $registration = Registration::factory()->create(['category_id' => $category->id, 'pair_id' => $pair->id, 'player_id' => null]);
+    Sanctum::actingAs($user);
+
+    $json = getJson("/api/registrations/{$registration->id}")->assertOk()->json();
+
+    expect($json['pair']['player1']['name'])->toBe('Ana')
+        ->and($json['pair']['player2']['name'])->toBe('Luis');
+});
+
+test('an individual registration embeds the player', function () {
+    $category = Category::factory()->create(['registration_mode' => 'individual_rotating']);
+    $user = User::factory()->create(['name' => 'Marta']);
+    $registration = Registration::factory()->create(['category_id' => $category->id, 'pair_id' => null, 'player_id' => $user->id]);
+    Sanctum::actingAs($user);
+
+    $json = getJson("/api/registrations/{$registration->id}")->assertOk()->json();
+
+    expect($json['player']['name'])->toBe('Marta');
+});

@@ -73,7 +73,12 @@ class Phase extends Model
                     ]);
                 }
 
-                return $phase->load('matches');
+                return $phase->load([
+                    'matches.side1Player1:id,name',
+                    'matches.side1Player2:id,name',
+                    'matches.side2Player1:id,name',
+                    'matches.side2Player2:id,name',
+                ]);
             });
         });
     }

@@ -265,6 +265,12 @@ paths:
       tags: [Competitions]
       summary: List public competitions (paginated, 15/page)
       description: Excludes private competitions (is_private=true), even the caller's own. Use GET /me/competitions to see those.
+      parameters:
+        - name: upcoming
+          in: query
+          required: false
+          description: When truthy (1/true), excludes competitions whose end_date is in the past. Competitions with no end_date are always included.
+          schema: { type: boolean }
       responses:
         "200":
           description: OK
@@ -996,12 +1002,21 @@ components:
         user: { $ref: "#/components/schemas/User" }
         token: { type: string }
 
+    UserSummary:
+      type: object
+      description: Minimal player data embedded in Pair/Registration/Match responses so clients don't have to resolve ids separately.
+      properties:
+        id: { type: integer }
+        name: { type: string }
+
     Pair:
       type: object
       properties:
         id: { type: integer }
         player1_id: { type: integer }
         player2_id: { type: integer }
+        player1: { $ref: "#/components/schemas/UserSummary" }
+        player2: { $ref: "#/components/schemas/UserSummary" }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -1081,6 +1096,14 @@ components:
         pair_id: { type: integer, nullable: true }
         player_id: { type: integer, nullable: true }
         status: { $ref: "#/components/schemas/RegistrationStatus" }
+        pair:
+          allOf:
+            - $ref: "#/components/schemas/Pair"
+          description: Present (with its own player1/player2 embedded) only when pair_id is set. Only on GET (index/show), not on POST/PUT responses.
+        player:
+          allOf:
+            - $ref: "#/components/schemas/UserSummary"
+          description: Present only when player_id is set. Only on GET (index/show), not on POST/PUT responses.
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -1134,6 +1157,12 @@ components:
             phase_id: { type: integer }
             status: { $ref: "#/components/schemas/MatchStatus" }
             winner_side: { type: integer, enum: [1, 2], nullable: true }
+            side1_player1:
+              allOf: [{ $ref: "#/components/schemas/UserSummary" }]
+              description: Present on GET /phases/{phase}/matches, GET /matches/{match}, and the Phase.matches embedded in round-robin generation — not on the POST/PUT responses.
+            side1_player2: { $ref: "#/components/schemas/UserSummary" }
+            side2_player1: { $ref: "#/components/schemas/UserSummary" }
+            side2_player2: { $ref: "#/components/schemas/UserSummary" }
             created_at: { type: string, format: date-time }
             updated_at: { type: string, format: date-time }
             match_sets:

@@ -57,3 +57,19 @@ test('any authenticated user can view a specific pair', function () {
 
     getJson("/api/pairs/{$pair->id}")->assertOk()->assertJsonFragment(['id' => $pair->id]);
 });
+
+test('pair responses embed player1 and player2 names', function () {
+    $user = User::factory()->create(['name' => 'Ana']);
+    $partner = User::factory()->create(['name' => 'Luis']);
+    Sanctum::actingAs($user);
+
+    $created = postJson('/api/pairs', ['partner_id' => $partner->id])->assertCreated()->json();
+    expect($created['player1'])->toBe(['id' => $user->id, 'name' => 'Ana'])
+        ->and($created['player2'])->toBe(['id' => $partner->id, 'name' => 'Luis']);
+
+    $shown = getJson("/api/pairs/{$created['id']}")->assertOk()->json();
+    expect($shown['player1']['name'])->toBe('Ana');
+
+    $indexed = getJson('/api/pairs')->assertOk()->json();
+    expect($indexed[0]['player2']['name'])->toBe('Luis');
+});

@@ -97,6 +97,18 @@ test('generating a round robin for four pairs produces every matchup exactly onc
     expect($matchups)->toHaveCount(6);
 });
 
+test('the generated schedule embeds player names for each match', function () {
+    $organizer = User::factory()->create();
+    $category = leagueCategory($organizer);
+    collect(range(1, 2))->each(fn () => confirmedPairRegistration($category));
+    Sanctum::actingAs($organizer);
+
+    $phases = postJson("/api/categories/{$category->id}/round-robin")->assertCreated()->json();
+
+    expect($phases[0]['matches'][0]['side1_player1'])->toHaveKeys(['id', 'name'])
+        ->and($phases[0]['matches'][0]['side2_player2'])->toHaveKeys(['id', 'name']);
+});
+
 test('an odd number of pairs gets an automatic bye each matchday', function () {
     $organizer = User::factory()->create();
     $category = leagueCategory($organizer);
