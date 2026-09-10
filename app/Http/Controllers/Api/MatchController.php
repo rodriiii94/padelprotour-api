@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\PadelMatch;
 use App\Models\Phase;
+use App\Models\Ranking;
 use Illuminate\Http\Request;
 
 class MatchController extends Controller
@@ -65,6 +66,13 @@ class MatchController extends Controller
         ]);
 
         $match->update($validated);
+
+        // Al completar un partido, la clasificación de su categoría queda
+        // desactualizada al instante -- se recalcula sola, sin que el
+        // organizador tenga que llamar aparte a /rankings/recalculate.
+        if ($match->status === 'completed') {
+            Ranking::recalculateForCategory($match->phase->category);
+        }
 
         return $match;
     }

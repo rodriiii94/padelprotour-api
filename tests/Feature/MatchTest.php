@@ -3,7 +3,9 @@
 use App\Models\Category;
 use App\Models\Competition;
 use App\Models\PadelMatch;
+use App\Models\Pair;
 use App\Models\Phase;
+use App\Models\Ranking;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
 
@@ -101,6 +103,34 @@ test('viewing a match embeds all four players', function () {
         ->and($json['side1_player2']['id'])->toBe($players[1]->id)
         ->and($json['side2_player1']['id'])->toBe($players[2]->id)
         ->and($json['side2_player2']['id'])->toBe($players[3]->id);
+});
+
+test('completing a match recalculates the category ranking automatically', function () {
+    $organizer = User::factory()->create();
+    $competition = Competition::factory()->create(['organizer_id' => $organizer->id]);
+    $category = Category::factory()->create(['competition_id' => $competition->id, 'registration_mode' => null]);
+    $group = Phase::factory()->create(['category_id' => $category->id, 'type' => 'group']);
+    $pairA = Pair::factory()->create();
+    $pairB = Pair::factory()->create();
+    $match = PadelMatch::factory()->create([
+        'phase_id' => $group->id,
+        'side1_player1_id' => $pairA->player1_id,
+        'side1_player2_id' => $pairA->player2_id,
+        'side2_player1_id' => $pairB->player1_id,
+        'side2_player2_id' => $pairB->player2_id,
+        'status' => 'scheduled',
+    ]);
+    Sanctum::actingAs($organizer);
+
+    expect(Ranking::where('category_id', $category->id)->count())->toBe(0);
+
+    putJson("/api/matches/{$match->id}", ['status' => 'completed', 'winner_side' => 1])->assertOk();
+
+    $rankings = Ranking::where('category_id', $category->id)->orderBy('position')->get();
+    expect($rankings)->toHaveCount(2)
+        ->and($rankings[0]->pair_id)->toBe($pairA->id)
+        ->and($rankings[0]->points)->toBe(3)
+        ->and($rankings[1]->points)->toBe(0);
 });
 
 test('a non organizer cannot update or delete a match', function () {

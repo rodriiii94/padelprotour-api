@@ -639,7 +639,9 @@ paths:
       summary: Update a match (organizer only)
       description: >
         Setting status=completed requires winner_side (1 or 2) in the same
-        request.
+        request. Doing so also recalculates the match's category ranking
+        automatically (same computation as POST /categories/{category}/rankings/recalculate) —
+        no separate call needed.
       requestBody:
         content:
           application/json:
