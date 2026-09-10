@@ -37,5 +37,14 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('invite', function (Request $request) {
             return Limit::perMinute(10)->by($request->user()?->id ?? $request->ip());
         });
+
+        RateLimiter::for('social-login', function (Request $request) {
+            return Limit::perMinute(10)->by($request->ip());
+        });
+
+        // email_verification_token es otro secreto de un solo valor.
+        RateLimiter::for('email-verify', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip());
+        });
     }
 }

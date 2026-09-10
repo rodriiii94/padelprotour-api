@@ -34,27 +34,33 @@ paths:
   /register:
     post:
       tags: [Auth]
-      summary: Create an account and receive a token
+      summary: Create an unverified account and send a verification email
       security: []
-      description: Rate limited to 5 requests/minute per IP.
+      description: >
+        Rate limited to 5 requests/minute per IP. Does NOT return a token —
+        the account must be verified via POST /email/verify (deep link sent
+        by email) before it can log in. See VerifyEmailNotification.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [name, email, password, device_name]
+              required: [name, email, password]
               properties:
                 name: { type: string, maxLength: 255 }
                 email: { type: string, format: email }
                 password: { type: string, minLength: 8 }
-                device_name: { type: string, example: "iphone-de-marta" }
       responses:
         "201":
-          description: Account created
+          description: Account created, unverified
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/AuthToken" }
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  user: { $ref: "#/components/schemas/User" }
         "422": { $ref: "#/components/responses/ValidationError" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
@@ -64,9 +70,9 @@ paths:
       summary: Exchange credentials for a token
       security: []
       description: >
-        Rate limited to 5 requests/minute per email+IP combination. Logging
-        in again with the same device_name revokes the previous token for
-        that device.
+        Rate limited to 5 requests/minute per email+IP combination. 403 if
+        the account's email isn't verified yet. Logging in again with the
+        same device_name revokes the previous token for that device.
       requestBody:
         required: true
         content:
@@ -84,6 +90,132 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AuthToken" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /auth/google:
+    post:
+      tags: [Auth]
+      summary: Log in (or sign up) with a Google id_token
+      security: []
+      description: >
+        The app performs Google's native sign-in itself and sends the
+        resulting id_token here for verification (JWKS-based, not a
+        redirect flow). New accounts are created already email-verified.
+        Rate limited to 10 requests/minute per IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_token, device_name]
+              properties:
+                id_token: { type: string, description: Google ID token (JWT) obtained natively by the app. }
+                device_name: { type: string }
+      responses:
+        "200":
+          description: Authenticated (new or existing account)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthToken" }
+        "409":
+          description: An account with this email already exists under a different login method.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /auth/apple:
+    post:
+      tags: [Auth]
+      summary: Log in (or sign up) with an Apple id_token
+      security: []
+      description: >
+        Same as POST /auth/google but for Apple. Apple only sends the
+        user's real name once, outside the id_token (in the native SDK's
+        first response) — pass it as `name` on that first call; ignored on
+        subsequent logins. Rate limited to 10 requests/minute per IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_token, device_name]
+              properties:
+                id_token: { type: string, description: Apple ID token (JWT) obtained natively by the app. }
+                device_name: { type: string }
+                name: { type: string, nullable: true, description: Only available (and only needed) on the very first sign-in. }
+      responses:
+        "200":
+          description: Authenticated (new or existing account)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthToken" }
+        "409":
+          description: An account with this email already exists under a different login method.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /email/verify:
+    post:
+      tags: [Auth]
+      summary: Verify an email address and log in
+      security: []
+      description: Rate limited to 5 requests/minute per IP. The token comes from the deep link (padelprotour://verify-email?token=...) sent by VerifyEmailNotification.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, device_name]
+              properties:
+                token: { type: string }
+                device_name: { type: string }
+      responses:
+        "200":
+          description: Verified and authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthToken" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /email/resend:
+    post:
+      tags: [Auth]
+      summary: Resend the verification email
+      security: []
+      description: >
+        Rate limited to 5 requests/minute per IP. Always returns the same
+        generic message regardless of whether the email exists or is
+        already verified, to avoid account enumeration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
         "422": { $ref: "#/components/responses/ValidationError" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
@@ -995,6 +1127,8 @@ components:
         email: { type: string, format: email }
         level: { type: string, nullable: true, example: "3ª" }
         club: { type: string, nullable: true }
+        provider: { type: string, nullable: true, enum: [google, apple, null], description: null for email/password accounts. }
+        email_verified_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 

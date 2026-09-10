@@ -35,4 +35,16 @@ return [
         ],
     ],
 
+    // Client ids aceptados como `aud` en el id_token nativo de cada
+    // proveedor (login social, ver app/Auth/SocialLogin). Varios valores
+    // separados por comas -- p.ej. el client id de iOS y el de Android de
+    // Google. Para Apple es el Bundle ID de la app, no un Service ID.
+    'google' => [
+        'client_ids' => array_filter(explode(',', (string) env('GOOGLE_CLIENT_IDS', ''))),
+    ],
+
+    'apple' => [
+        'client_ids' => array_filter(explode(',', (string) env('APPLE_CLIENT_IDS', ''))),
+    ],
+
 ];

@@ -20,6 +20,10 @@ use Illuminate\Support\Facades\Route;
 // Rutas públicas (sin token)
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+Route::post('/auth/google', [AuthController::class, 'loginWithGoogle'])->middleware('throttle:social-login');
+Route::post('/auth/apple', [AuthController::class, 'loginWithApple'])->middleware('throttle:social-login');
+Route::post('/email/verify', [AuthController::class, 'verifyEmail'])->middleware('throttle:email-verify');
+Route::post('/email/resend', [AuthController::class, 'resendVerificationEmail'])->middleware('throttle:email-verify');
 
 // Rutas protegidas: exigen "Authorization: Bearer <token>"
 Route::middleware('auth:sanctum')->group(function () {

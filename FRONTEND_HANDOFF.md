@@ -73,6 +73,50 @@ redundante — podéis quitarla. El endpoint de `recalculate` sigue existiendo
 por si algún día hace falta forzar un recálculo manual (p.ej. tras corregir
 un set de un partido ya completado), pero ya no es parte del flujo normal.
 
+## 5. Login social (Google + Apple) y verificación de email obligatoria
+
+**Cambio que rompe compatibilidad**: `POST /register` **ya no devuelve token**.
+Crea la cuenta sin verificar, manda un email de verificación, y responde
+`{ message, user }` (201) sin `token`. `POST /login` ahora da `403` si la
+cuenta no está verificada (`email_verified_at` es `null`).
+
+- **Verificación por email**: el email que mandamos incluye un botón/enlace
+  con un deep link: `padelprotour://verify-email?token={token}`. **Necesito
+  que configuréis ese esquema en `app.json`** (`"scheme": "padelprotour"`) y
+  que la app, al abrir ese link, lea el `token` de la query string y llame a:
+  - `POST /email/verify` — body `{ token, device_name }` → `{ user, token }`
+    (verifica y loguea en la misma llamada, no hace falta un paso aparte).
+  - `POST /email/resend` — body `{ email }` → reenvía el email si la cuenta
+    existe y no está verificada (respuesta genérica siempre, no revela si el
+    email existe).
+- **Google**: la app hace el login nativo con el SDK de Google ella misma
+  (no es un flujo de redirect contra nuestro backend) y nos manda el
+  `id_token` resultante:
+  - `POST /auth/google` — body `{ id_token, device_name }` → `{ user, token }`.
+    Cuenta nueva o existente, ya verificada automáticamente (Google ya
+    verificó el email). `409` si el email ya tiene cuenta por otro método
+    (no fusionamos automáticamente, por seguridad).
+- **Apple**: igual que Google, pero con una particularidad — **Apple solo
+  manda el nombre real la primera vez que el usuario autoriza, fuera del
+  token** (en la respuesta nativa del SDK de `expo-apple-authentication`, no
+  dentro del JWT). Hay que capturarlo en ese primer login y mandarlo:
+  - `POST /auth/apple` — body `{ id_token, device_name, name? }` (`name`
+    solo en el primer login de cada usuario; se ignora en los siguientes).
+
+**Configuración pendiente por vuestro lado** (yo ya dejé las variables listas
+en el backend, pero necesito los valores reales):
+- Google: el/los Client ID(s) de OAuth (iOS + Android si son distintos) →
+  me los pasáis y los meto en `GOOGLE_CLIENT_IDS`.
+- Apple: el **Bundle ID** de la app (no un Service ID — el login nativo usa
+  el bundle id como `aud` del token) → lo meto en `APPLE_CLIENT_IDS`.
+- Confirmar el esquema de deep link si `padelprotour://verify-email` no os
+  vale por lo que sea (aún no estaba definido en el frontend, así que elegí
+  ese por defecto).
+
+**Nota de infra**: en local los emails de verificación no salen de verdad
+(`MAIL_MAILER=log`, se ven en el log del backend) hasta que configuremos un
+mailer real — igual que pasó con Reverb al principio.
+
 ---
 
 Todo lo anterior está probado (tests de feature) y documentado en
