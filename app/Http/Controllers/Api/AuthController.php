@@ -11,8 +11,10 @@ use App\Models\User;
 use App\Notifications\VerifyEmailNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 // Autenticación por token para clientes "de terceros" (móvil + web vía
 // Expo), no autenticación de SPA por cookie -- por eso no usamos el guard
@@ -34,7 +36,7 @@ class AuthController extends Controller
             'email_verification_token' => Str::random(40),
         ]);
 
-        $user->notify(new VerifyEmailNotification($user->email_verification_token));
+        $this->sendVerificationEmail($user);
 
         return response()->json([
             'message' => 'Cuenta creada. Revisa tu email para verificarla antes de iniciar sesión.',
@@ -135,12 +137,31 @@ class AuthController extends Controller
 
         if ($user) {
             $user->forceFill(['email_verification_token' => Str::random(40)])->save();
-            $user->notify(new VerifyEmailNotification($user->email_verification_token));
+            $this->sendVerificationEmail($user);
         }
 
         return response()->json([
             'message' => 'Si la cuenta existe y no está verificada, te hemos enviado un nuevo email.',
         ]);
+    }
+
+    /**
+     * Un fallo del proveedor de email (caído, límite de la cuenta, dominio
+     * sin verificar en modo sandbox de Resend...) no debe tumbar el
+     * registro entero ni dejar la cuenta en un estado raro -- la cuenta ya
+     * se ha creado correctamente, el usuario simplemente podrá pedir que
+     * se le reenvíe el email de verificación más tarde.
+     */
+    private function sendVerificationEmail(User $user): void
+    {
+        try {
+            $user->notify(new VerifyEmailNotification($user->email_verification_token));
+        } catch (Throwable $e) {
+            Log::warning('No se pudo enviar el email de verificación.', [
+                'user_id' => $user->id,
+                'exception' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

@@ -23,6 +23,18 @@ test('registering creates an unverified account, sends a verification email and 
     Notification::assertSentTo($user, VerifyEmailNotification::class);
 });
 
+test('registration still succeeds even if the mail provider fails to send', function () {
+    Notification::shouldReceive('send')->once()->andThrow(new Exception('mail provider down'));
+
+    postJson('/api/register', [
+        'name' => 'Ana',
+        'email' => 'ana-mail-fail@example.test',
+        'password' => 'password123',
+    ])->assertCreated();
+
+    $this->assertDatabaseHas('users', ['email' => 'ana-mail-fail@example.test']);
+});
+
 test('an unverified user cannot log in', function () {
     $user = User::factory()->create(['email_verified_at' => null, 'password' => Hash::make('password123')]);
 
