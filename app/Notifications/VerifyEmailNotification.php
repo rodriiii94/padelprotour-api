@@ -25,7 +25,7 @@ class VerifyEmailNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $url = 'padelprotour://verify-email?token='.$this->token;
+        $url = 'padelontourapp://verify-email?token='.$this->token;
 
         return (new MailMessage)
             ->subject('Verifica tu email en PadelProTour')

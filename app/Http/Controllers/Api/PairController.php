@@ -25,6 +25,7 @@ class PairController extends Controller
 
         $validated = $request->validate([
             'partner_id' => ['required', 'integer', 'exists:users,id'],
+            'name' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
         abort_if($validated['partner_id'] === $user->id, 422, 'No puedes formar pareja contigo mismo.');
@@ -39,6 +40,7 @@ class PairController extends Controller
         $pair = Pair::create([
             'player1_id' => $user->id,
             'player2_id' => $validated['partner_id'],
+            'name' => $validated['name'] ?? null,
         ]);
 
         return response()->json($pair->load(['player1:id,name', 'player2:id,name']), 201);

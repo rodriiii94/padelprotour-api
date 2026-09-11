@@ -81,9 +81,10 @@ Crea la cuenta sin verificar, manda un email de verificación, y responde
 cuenta no está verificada (`email_verified_at` es `null`).
 
 - **Verificación por email**: el email que mandamos incluye un botón/enlace
-  con un deep link: `padelprotour://verify-email?token={token}`. **Necesito
-  que configuréis ese esquema en `app.json`** (`"scheme": "padelprotour"`) y
-  que la app, al abrir ese link, lea el `token` de la query string y llame a:
+  con un deep link: `padelontourapp://verify-email?token={token}` (mismo
+  esquema `padelontourapp` que ya usáis para el enlace de invitación — ya no
+  hace falta registrar nada nuevo en `app.json`). La app, al abrir ese link,
+  lee el `token` de la query string y llama a:
   - `POST /email/verify` — body `{ token, device_name }` → `{ user, token }`
     (verifica y loguea en la misma llamada, no hace falta un paso aparte).
   - `POST /email/resend` — body `{ email }` → reenvía el email si la cuenta
@@ -109,13 +110,30 @@ en el backend, pero necesito los valores reales):
   me los pasáis y los meto en `GOOGLE_CLIENT_IDS`.
 - Apple: el **Bundle ID** de la app (no un Service ID — el login nativo usa
   el bundle id como `aud` del token) → lo meto en `APPLE_CLIENT_IDS`.
-- Confirmar el esquema de deep link si `padelprotour://verify-email` no os
-  vale por lo que sea (aún no estaba definido en el frontend, así que elegí
-  ese por defecto).
 
 **Nota de infra**: en local los emails de verificación no salen de verdad
 (`MAIL_MAILER=log`, se ven en el log del backend) hasta que configuremos un
 mailer real — igual que pasó con Reverb al principio.
+
+## 6. Tres sueltas pedidas en el último informe, ya resueltas
+
+- **Deep link de verificación**: corregido al esquema `padelontourapp` (ver
+  punto 5 arriba) — ya no hace falta ningún cambio de vuestro lado, solo
+  que el link que llegue por email use `padelontourapp://verify-email?token=...`
+  en vez del esquema anterior.
+- **Nombre de pareja**: `POST /pairs` acepta `name` opcional (string, hasta
+  255) junto a `partner_id`. Aparece como `Pair.name` (nullable) en todas
+  las respuestas donde ya sale `Pair` — `GET /pairs`, `POST /pairs`,
+  `GET /pairs/{pair}`, y embebido en `Registration.pair`. No hay endpoint
+  para cambiarlo después de crear la pareja (no se pidió). `Ranking` y
+  `Match` siguen igual, identificando solo por `pair_id` — para mostrar el
+  nombre ahí hay que cruzar con la pareja correspondiente, como ya decíais
+  que ibais a hacer.
+- **Categorías por enlace de invitación**: nuevo `GET /invites/{token}/categories`
+  — misma idea que `GET /invites/{token}` (conocer el token es la
+  autorización, sin pasar por la policy normal), devuelve el array de
+  `Category` de esa competición. `POST /categories/{category}/registrations`
+  no necesita ningún cambio — ya no comprobaba privacidad.
 
 ---
 

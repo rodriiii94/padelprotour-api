@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('pairs', PairController::class)->only(['index', 'store', 'show']);
 
     Route::get('/invites/{token}', [InviteController::class, 'show'])->middleware('throttle:invite');
+    Route::get('/invites/{token}/categories', [InviteController::class, 'categories'])->middleware('throttle:invite');
 
     Route::apiResource('competitions', CompetitionController::class);
     Route::apiResource('competitions.categories', CategoryController::class)->shallow();

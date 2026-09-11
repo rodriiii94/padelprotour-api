@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['player1_id', 'player2_id'])]
+#[Fillable(['player1_id', 'player2_id', 'name'])]
 class Pair extends Model
 {
     /** @use HasFactory<PairFactory> */

@@ -58,6 +58,28 @@ test('any authenticated user can view a specific pair', function () {
     getJson("/api/pairs/{$pair->id}")->assertOk()->assertJsonFragment(['id' => $pair->id]);
 });
 
+test('a user can name their pair when forming it', function () {
+    $user = User::factory()->create();
+    $partner = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    postJson('/api/pairs', ['partner_id' => $partner->id, 'name' => 'Los Invencibles'])
+        ->assertCreated()
+        ->assertJsonFragment(['name' => 'Los Invencibles']);
+
+    $this->assertDatabaseHas('pairs', ['player1_id' => $user->id, 'player2_id' => $partner->id, 'name' => 'Los Invencibles']);
+});
+
+test('a pair name is optional', function () {
+    $user = User::factory()->create();
+    $partner = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    postJson('/api/pairs', ['partner_id' => $partner->id])
+        ->assertCreated()
+        ->assertJsonFragment(['name' => null]);
+});
+
 test('pair responses embed player1 and player2 names', function () {
     $user = User::factory()->create(['name' => 'Ana']);
     $partner = User::factory()->create(['name' => 'Luis']);

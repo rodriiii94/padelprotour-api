@@ -20,4 +20,16 @@ class InviteController extends Controller
 
         return $competition->revealInviteTokenFor($request->user());
     }
+
+    /**
+     * Igual que `show`: conocer el token es la autorización, así que se
+     * salta la policy normal de `view` -- necesario para que un invitado
+     * que todavía no participa pueda ver a qué categoría inscribirse.
+     */
+    public function categories(string $token)
+    {
+        $competition = Competition::where('invite_token', $token)->firstOrFail();
+
+        return $competition->categories;
+    }
 }

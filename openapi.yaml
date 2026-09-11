@@ -168,7 +168,7 @@ paths:
       tags: [Auth]
       summary: Verify an email address and log in
       security: []
-      description: Rate limited to 5 requests/minute per IP. The token comes from the deep link (padelprotour://verify-email?token=...) sent by VerifyEmailNotification.
+      description: Rate limited to 5 requests/minute per IP. The token comes from the deep link (padelontourapp://verify-email?token=...) sent by VerifyEmailNotification.
       requestBody:
         required: true
         content:
@@ -342,6 +342,7 @@ paths:
               required: [partner_id]
               properties:
                 partner_id: { type: integer }
+                name: { type: string, nullable: true, maxLength: 255, example: "Los Invencibles", description: Optional display name for the pair. }
       responses:
         "201":
           description: Created
@@ -388,6 +389,33 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Competition" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /invites/{token}/categories:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Competitions]
+      summary: List a competition's categories via its invite link
+      description: >
+        Same idea as GET /invites/{token}: bypasses the normal view policy,
+        knowing the token is the authorization. Needed so an invited user
+        who isn't a participant yet can see which category to register
+        for. Rate limited to 10 requests/minute per user (shares the
+        invite limiter).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Category" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
@@ -1153,6 +1181,7 @@ components:
         player2_id: { type: integer }
         player1: { $ref: "#/components/schemas/UserSummary" }
         player2: { $ref: "#/components/schemas/UserSummary" }
+        name: { type: string, nullable: true, example: "Los Invencibles", description: Optional display name set at creation. Falls back to null — clients should show "player1.name / player2.name" when absent. }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 

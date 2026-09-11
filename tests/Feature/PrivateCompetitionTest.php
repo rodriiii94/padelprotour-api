@@ -105,6 +105,29 @@ test('a valid invite token resolves the private competition regardless of prior 
         ->assertJsonFragment(['id' => $competition->id]);
 });
 
+test('guests cannot resolve categories via an invite link', function () {
+    $competition = Competition::factory()->create(['is_private' => true, 'invite_token' => 'some-token']);
+    Category::factory()->create(['competition_id' => $competition->id]);
+
+    getJson('/api/invites/some-token/categories')->assertUnauthorized();
+});
+
+test('an unknown invite token returns not found for categories too', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    getJson('/api/invites/does-not-exist/categories')->assertNotFound();
+});
+
+test('a non participant can list categories of a private competition via its invite token', function () {
+    $competition = Competition::factory()->create(['is_private' => true, 'invite_token' => 'known-token-789']);
+    $category = Category::factory()->create(['competition_id' => $competition->id, 'name' => '3ª Mixta']);
+    Sanctum::actingAs(User::factory()->create());
+
+    getJson('/api/invites/known-token-789/categories')
+        ->assertOk()
+        ->assertJsonFragment(['id' => $category->id, 'name' => '3ª Mixta']);
+});
+
 test('invite lookups are rate limited', function () {
     $competition = Competition::factory()->create(['is_private' => true, 'invite_token' => 'rate-limit-token']);
     Sanctum::actingAs(User::factory()->create());
