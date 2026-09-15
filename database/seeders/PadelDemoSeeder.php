@@ -47,6 +47,7 @@ class PadelDemoSeeder extends Seeder
         $this->seedTournament($organizer, $players);
         $this->seedFixedPairLeague($organizer, $players);
         $this->seedRotatingLeague($organizer, $players);
+        $this->seedUpcomingFixedPairLeague($organizer, $players);
     }
 
     private function seedTournament(User $organizer, Collection $players): void
@@ -164,6 +165,44 @@ class PadelDemoSeeder extends Seeder
         });
 
         Ranking::recalculateForCategory($category);
+    }
+
+    /**
+     * Liga recién creada, todavía en fase de inscripción: categoría y 3
+     * parejas confirmadas, pero sin calendario generado todavía (sin
+     * fases ni partidos) -- para probar ese hueco del flujo.
+     */
+    private function seedUpcomingFixedPairLeague(User $organizer, Collection $players): void
+    {
+        $league = Competition::factory()->create([
+            'organizer_id' => $organizer->id,
+            'type' => 'league',
+            'name' => 'Liga de Invierno',
+            'venue' => 'Club Pádel Sur',
+            'start_date' => now()->addWeeks(3),
+            'end_date' => now()->addWeeks(11),
+            'registration_closes_at' => now()->addWeeks(2),
+        ]);
+
+        $category = Category::factory()->create([
+            'competition_id' => $league->id,
+            'name' => '5ª Mixta',
+            'registration_mode' => null,
+            'slots' => 8,
+        ]);
+
+        $pairs = collect([
+            Pair::factory()->create(['player1_id' => $players[10]->id, 'player2_id' => $players[11]->id]),
+            Pair::factory()->create(['player1_id' => $players[1]->id, 'player2_id' => $players[4]->id]),
+            Pair::factory()->create(['player1_id' => $players[3]->id, 'player2_id' => $players[5]->id]),
+        ]);
+
+        $pairs->each(fn (Pair $pair) => Registration::factory()->create([
+            'category_id' => $category->id,
+            'pair_id' => $pair->id,
+            'player_id' => null,
+            'status' => 'confirmed',
+        ]));
     }
 
     private function seedRotatingLeague(User $organizer, Collection $players): void
