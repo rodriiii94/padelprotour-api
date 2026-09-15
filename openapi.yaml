@@ -847,7 +847,12 @@ paths:
     post:
       tags: [Match Sets]
       summary: Record a set score (organizer only)
-      description: Rejected if a set with the same set_number already exists for this match.
+      description: >-
+        Best-of-three: set_number must be 1-3. Rejected if a set with the
+        same set_number already exists for this match, if the match is
+        already decided (one side has already won 2 sets), or if the score
+        is not a valid padel set result (6 games with a 2-game lead, 7-5, or
+        7-6 in a tie-break).
       requestBody:
         required: true
         content:
@@ -856,9 +861,9 @@ paths:
               type: object
               required: [set_number, side1_games, side2_games]
               properties:
-                set_number: { type: integer, minimum: 1 }
-                side1_games: { type: integer, minimum: 0 }
-                side2_games: { type: integer, minimum: 0 }
+                set_number: { type: integer, minimum: 1, maximum: 3 }
+                side1_games: { type: integer, minimum: 0, maximum: 7 }
+                side2_games: { type: integer, minimum: 0, maximum: 7 }
       responses:
         "201":
           description: Created
@@ -886,14 +891,17 @@ paths:
     put:
       tags: [Match Sets]
       summary: Correct a set's score (organizer only)
+      description: >-
+        Rejected if the resulting score (merging any omitted field with the
+        set's current value) is not a valid padel set result.
       requestBody:
         content:
           application/json:
             schema:
               type: object
               properties:
-                side1_games: { type: integer, minimum: 0 }
-                side2_games: { type: integer, minimum: 0 }
+                side1_games: { type: integer, minimum: 0, maximum: 7 }
+                side2_games: { type: integer, minimum: 0, maximum: 7 }
       responses:
         "200":
           description: OK

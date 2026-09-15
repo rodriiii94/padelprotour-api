@@ -68,4 +68,25 @@ class PadelMatch extends Model
     {
         return $this->hasMany(MatchSet::class, 'match_id');
     }
+
+    /**
+     * Cuántos sets registrados ha ganado ese lado.
+     */
+    public function setsWon(int $side): int
+    {
+        return $this->matchSets
+            ->filter(fn (MatchSet $set) => $side === 1
+                ? $set->side1_games > $set->side2_games
+                : $set->side2_games > $set->side1_games)
+            ->count();
+    }
+
+    /**
+     * En pádel se juega al mejor de tres sets: el partido queda decidido
+     * en cuanto un lado gana 2, sin necesidad de un tercero.
+     */
+    public function isDecided(): bool
+    {
+        return $this->setsWon(1) >= 2 || $this->setsWon(2) >= 2;
+    }
 }

@@ -18,11 +18,16 @@ class MatchSetFactory extends Factory
      */
     public function definition(): array
     {
+        [$winnerGames, $loserGames] = fake()->randomElement([
+            [6, 0], [6, 1], [6, 2], [6, 3], [6, 4], [7, 5], [7, 6],
+        ]);
+        $side1Wins = fake()->boolean();
+
         return [
             'match_id' => PadelMatch::factory(),
             'set_number' => fake()->numberBetween(1, 3),
-            'side1_games' => fake()->numberBetween(0, 7),
-            'side2_games' => fake()->numberBetween(0, 7),
+            'side1_games' => $side1Wins ? $winnerGames : $loserGames,
+            'side2_games' => $side1Wins ? $loserGames : $winnerGames,
         ];
     }
 }
