@@ -135,6 +135,42 @@ mailer real — igual que pasó con Reverb al principio.
   `Category` de esa competición. `POST /categories/{category}/registrations`
   no necesita ningún cambio — ya no comprobaba privacidad.
 
+## 7. Validación de resultados de set (mejor de 3, marcador válido de pádel)
+
+Hasta ahora `POST /matches/{match}/sets` y `PUT /sets/{set}` aceptaban
+cualquier `set_number` y cualquier `side1_games`/`side2_games` — se podían
+registrar más de 3 sets o marcadores que no existen en pádel (`9-0`, `0-7`,
+`5-5`...). Ya está corregido en el backend, con `422` en los casos
+inválidos, pero la pantalla de resultado (la de la captura que mandasteis)
+deja escribir esos valores libremente y solo falla al guardar — hay que
+ajustar la UI para que no llegue a ese punto.
+
+**Reglas que ahora aplica el backend:**
+- `set_number` solo puede ser `1`, `2` o `3`.
+- No se puede añadir un set nuevo si un lado ya ha ganado 2 (partido
+  decidido al mejor de 3 — no hace falta un tercer set).
+- Un resultado de set solo es válido si es: 6 juegos con 2 de diferencia
+  (`6-0` a `6-4`), `7-5`, o `7-6` (tie-break). Cualquier otra combinación
+  (incluido un empate como `5-5`, o `6-5` sin resolver) da `422`.
+
+**Formato del error:** ojo, no todos son errores de validación "de campo".
+- `set_number` fuera de rango sí es un error de validación normal:
+  `422` con `{ message, errors: { set_number: [...] } }`.
+- "resultado no válido en pádel" y "partido ya decidido" son reglas de
+  negocio (`abort_if`/`abort_unless`), no de un campo concreto: `422` con
+  solo `{ message }` (sin `errors`). No asumáis que `errors.side1_games`
+  vendrá siempre relleno — mostrad `message` como fallback genérico.
+
+**Qué hacer:**
+- No mostrar el input del set 3 (ni permitir añadir más filas) en cuanto un
+  lado lleve 2 sets ganados con los sets ya introducidos — el partido está
+  decidido, ocultad el resto en vez de esperar al `422`.
+- Limitar los selectores/inputs de juegos por set a los marcadores válidos
+  de arriba, en vez de un campo numérico libre — evita el `9-0` o `5-5` de
+  la captura antes de mandar la petición.
+- Si aun así llega un `422`, mostrar `message` tal cual (ya viene en
+  castellano, listo para el usuario) en lugar de un error genérico.
+
 ---
 
 Todo lo anterior está probado (tests de feature) y documentado en
