@@ -94,3 +94,31 @@ test('a user who is not the organizer cannot delete the competition', function (
     deleteJson("/api/competitions/{$competition->id}")->assertForbidden();
     $this->assertDatabaseHas('competitions', ['id' => $competition->id]);
 });
+
+test('the organizer can cancel their competition and it stops appearing in the public listing', function () {
+    $organizer = User::factory()->create();
+    $competition = Competition::factory()->create(['organizer_id' => $organizer->id]);
+    Sanctum::actingAs($organizer);
+
+    postJson("/api/competitions/{$competition->id}/cancel")
+        ->assertOk()
+        ->assertJsonPath('cancelled_at', fn ($value) => $value !== null);
+
+    $ids = collect(getJson('/api/competitions')->assertOk()->json('data'))->pluck('id');
+    expect($ids)->not->toContain($competition->id);
+});
+
+test('a user who is not the organizer cannot cancel the competition', function () {
+    $competition = Competition::factory()->create();
+    Sanctum::actingAs(User::factory()->create());
+
+    postJson("/api/competitions/{$competition->id}/cancel")->assertForbidden();
+});
+
+test('a competition cannot be cancelled twice', function () {
+    $organizer = User::factory()->create();
+    $competition = Competition::factory()->create(['organizer_id' => $organizer->id, 'cancelled_at' => now()]);
+    Sanctum::actingAs($organizer);
+
+    postJson("/api/competitions/{$competition->id}/cancel")->assertUnprocessable();
+});

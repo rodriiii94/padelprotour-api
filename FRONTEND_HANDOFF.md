@@ -171,6 +171,18 @@ ajustar la UI para que no llegue a ese punto.
 - Si aun así llega un `422`, mostrar `message` tal cual (ya viene en
   castellano, listo para el usuario) en lugar de un error genérico.
 
+## 8. Cancelar competición (nuevo, distinto de eliminar)
+
+- `Competition` tiene `cancelled_at` (nullable). `DELETE /competitions/{id}`
+  ya existía (borra todo en cascada, irreversible); ahora además
+  `POST /competitions/{id}/cancel` (organizador, `422` si ya está
+  cancelada) la marca sin borrar nada.
+- Una cancelada desaparece de `GET /competitions` pero sigue en
+  `GET /me/competitions` — y `POST /categories/{id}/registrations` da
+  `422` si la competición de esa categoría está cancelada.
+- Esta vez el botón lo monto yo mismo en la app (pantalla de detalle de
+  competición), no hace falta que lo hagáis vosotros.
+
 ---
 
 Todo lo anterior está probado (tests de feature) y documentado en

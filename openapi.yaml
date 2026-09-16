@@ -424,7 +424,7 @@ paths:
     get:
       tags: [Competitions]
       summary: List public competitions (paginated, 15/page)
-      description: Excludes private competitions (is_private=true), even the caller's own. Use GET /me/competitions to see those.
+      description: Excludes private competitions (is_private=true) and cancelled ones, even the caller's own. Use GET /me/competitions to see those.
       parameters:
         - name: upcoming
           in: query
@@ -491,10 +491,33 @@ paths:
     delete:
       tags: [Competitions]
       summary: Delete a competition (organizer only)
+      description: Irreversible — cascades to its categories, phases, matches, registrations, rankings and chat messages.
       responses:
         "204": { description: Deleted }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+
+  /competitions/{competition}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/CompetitionId"
+    post:
+      tags: [Competitions]
+      summary: Cancel a competition (organizer only)
+      description: >-
+        Reversible in the data (the row and its history are kept, nothing is
+        deleted), but stops it from accepting new registrations and hides it
+        from GET /competitions — it still appears in GET /me/competitions
+        for the organizer and existing participants. Rejected with 422 if
+        already cancelled. There is no "uncancel" endpoint.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Competition" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /competitions/{competition}/categories:
     parameters:
@@ -586,8 +609,9 @@ paths:
       description: >
         Send `pair_id` for fixed-pair categories (you must be one of the two
         players) or `player_id` for individual_rotating categories (must
-        equal your own id) — never both. Rejected if the competition's
-        registration_closes_at has passed, or if already registered.
+        equal your own id) — never both. Rejected if the competition has
+        been cancelled, if its registration_closes_at has passed, or if
+        already registered.
       requestBody:
         required: true
         content:
@@ -1231,6 +1255,11 @@ components:
                 GET /invites/{token}.
             created_at: { type: string, format: date-time }
             updated_at: { type: string, format: date-time }
+            cancelled_at:
+              type: string
+              format: date-time
+              nullable: true
+              description: Set by POST /competitions/{competition}/cancel. Null means active.
 
     RegistrationMode:
       type: string

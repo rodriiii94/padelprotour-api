@@ -60,6 +60,17 @@ test('my competitions includes organized and participated competitions, excludin
         ->not->toContain($unrelated->id);
 });
 
+test('a cancelled competition still appears in my competitions', function () {
+    $user = User::factory()->create();
+    $organized = Competition::factory()->create(['organizer_id' => $user->id, 'cancelled_at' => now()]);
+
+    Sanctum::actingAs($user);
+
+    $ids = collect(getJson('/api/me/competitions')->assertOk()->json())->pluck('id');
+
+    expect($ids)->toContain($organized->id);
+});
+
 test('a rejected registration does not count towards my competitions', function () {
     $user = User::factory()->create();
     $competition = Competition::factory()->create();

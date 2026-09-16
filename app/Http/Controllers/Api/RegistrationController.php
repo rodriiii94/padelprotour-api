@@ -46,6 +46,12 @@ class RegistrationController extends Controller
         }
 
         abort_if(
+            $category->competition->cancelled_at !== null,
+            422,
+            'Esta competición ha sido cancelada.'
+        );
+
+        abort_if(
             $category->competition->registration_closes_at?->isPast(),
             422,
             'El plazo de inscripción para esta competición ya ha cerrado.'

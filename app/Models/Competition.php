@@ -31,6 +31,7 @@ class Competition extends Model
             'end_date' => 'date',
             'registration_closes_at' => 'datetime',
             'is_private' => 'boolean',
+            'cancelled_at' => 'datetime',
         ];
     }
 

@@ -14,6 +14,7 @@ class CompetitionController extends Controller
         $this->authorize('viewAny', Competition::class);
 
         $competitions = Competition::where('is_private', false)
+            ->whereNull('cancelled_at')
             ->when($request->boolean('upcoming'), fn ($query) => $query->upcoming())
             ->latest()
             ->paginate(15);
@@ -78,5 +79,16 @@ class CompetitionController extends Controller
         $competition->delete();
 
         return response()->noContent();
+    }
+
+    public function cancel(Request $request, Competition $competition)
+    {
+        $this->authorize('update', $competition);
+
+        abort_if($competition->cancelled_at !== null, 422, 'Esta competición ya está cancelada.');
+
+        $competition->forceFill(['cancelled_at' => now()])->save();
+
+        return $competition->revealInviteTokenFor($request->user());
     }
 }

@@ -104,6 +104,16 @@ test('registering after the deadline is rejected', function () {
         ->assertUnprocessable();
 });
 
+test('registering to a cancelled competition is rejected', function () {
+    $competition = Competition::factory()->create(['cancelled_at' => now()]);
+    $category = Category::factory()->create(['competition_id' => $competition->id, 'registration_mode' => 'individual_rotating']);
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    postJson("/api/categories/{$category->id}/registrations", ['player_id' => $user->id])
+        ->assertUnprocessable();
+});
+
 test('the organizer can update a registration status', function () {
     $organizer = User::factory()->create();
     $competition = Competition::factory()->create(['organizer_id' => $organizer->id]);
