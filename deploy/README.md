@@ -53,6 +53,11 @@ sudo -u deploy composer install --no-dev --optimize-autoloader
 sudo -u deploy php artisan migrate --force
 sudo -u deploy php artisan config:cache
 sudo -u deploy php artisan route:cache
+# storage/ y bootstrap/cache/ los crea 'deploy' (por el git clone), pero
+# PHP-FPM corre como 'www-data' -- sin esto, cualquier request que loguee
+# o cachee algo da 500.
+chown -R deploy:www-data storage bootstrap/cache
+chmod -R ug+rwx storage bootstrap/cache
 ```
 
 ## 4. Nginx + SSL
