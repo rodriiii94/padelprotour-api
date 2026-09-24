@@ -8,6 +8,5 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return response()->json([
         'name' => 'PadelProTour API',
-        'docs' => 'https://github.com/rodriiii94/padelprotour-api/blob/main/openapi.yaml',
     ]);
 });
