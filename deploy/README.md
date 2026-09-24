@@ -111,6 +111,9 @@ Una vez montado todo lo anterior, cada actualización es:
 ssh deploy@TU_IP 'cd /var/www/api && bash deploy/deploy.sh'
 ```
 
+Guía completa del día a día (web, `.env`, logs, backups, marcha atrás) en
+[DESPLEGAR.md](DESPLEGAR.md).
+
 ## 9. Verificación
 
 - `https://api.padelprotour.net/up` → 200 (health check de Laravel).
