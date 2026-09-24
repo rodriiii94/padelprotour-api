@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Aprovisiona un VPS Ubuntu 22.04/24.04 recién creado para servir la API
+# Aprovisiona un VPS Ubuntu LTS recién creado para servir la API
 # Laravel (PHP-FPM), el build estático de la web (Nginx), Postgres, Reverb
 # y el worker de colas. Ejecutar UNA VEZ, como root, en un servidor limpio.
 #
@@ -9,12 +9,9 @@ set -euo pipefail
 echo "==> Actualizando el sistema"
 apt-get update && apt-get upgrade -y
 
-echo "==> Instalando PHP 8.3 y extensiones"
-apt-get install -y software-properties-common
-add-apt-repository -y ppa:ondrej/php
-apt-get update
-apt-get install -y php8.3-fpm php8.3-cli php8.3-pgsql php8.3-mbstring \
-    php8.3-xml php8.3-curl php8.3-zip php8.3-bcmath php8.3-intl php8.3-gd
+echo "==> Instalando PHP y extensiones (de los repos por defecto de esta Ubuntu)"
+apt-get install -y php-fpm php-cli php-pgsql php-mbstring \
+    php-xml php-curl php-zip php-bcmath php-intl php-gd
 
 echo "==> Instalando Postgres"
 apt-get install -y postgresql postgresql-contrib

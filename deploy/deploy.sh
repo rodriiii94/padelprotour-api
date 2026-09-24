@@ -23,6 +23,6 @@ echo "==> reiniciar servicios"
 # hay que avisarle explícitamente de que hay deploy nuevo.
 php artisan queue:restart
 sudo systemctl restart reverb
-sudo systemctl reload php8.3-fpm
+sudo systemctl reload php8.5-fpm
 
 echo "==> hecho"
