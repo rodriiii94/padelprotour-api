@@ -1,0 +1,13 @@
+[Unit]
+Description=PadelProTour - Reverb WebSocket server
+After=network.target
+
+[Service]
+User=deploy
+WorkingDirectory=/var/www/api
+ExecStart=/usr/bin/php artisan reverb:start --host=127.0.0.1 --port=8080
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
