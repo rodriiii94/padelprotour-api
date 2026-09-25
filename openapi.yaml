@@ -940,7 +940,8 @@ paths:
         sets are stored and the match moves to `pending_validation`
         (`winner_side` set, `result_proposed_by` = caller). Rankings and stats
         only count `completed` matches, so nothing changes until it is
-        confirmed. 422 if the match is already completed or pending.
+        confirmed, or 48 hours pass without an answer (then it is confirmed
+        automatically). 422 if the match is already completed or pending.
       requestBody:
         required: true
         content:
@@ -1653,6 +1654,7 @@ components:
             status: { $ref: "#/components/schemas/MatchStatus" }
             winner_side: { type: integer, enum: [1, 2], nullable: true }
             result_proposed_by: { type: integer, nullable: true, description: "Player who proposed the result while status is pending_validation; null otherwise." }
+            result_proposed_at: { type: string, format: date-time, nullable: true, description: "When the result was proposed. 48 hours later, if nobody confirmed or rejected it, it is confirmed automatically (hourly job)." }
             side1_player1:
               allOf: [{ $ref: "#/components/schemas/UserSummary" }]
               description: Present on GET /phases/{phase}/matches, GET /matches/{match}, and the Phase.matches embedded in round-robin generation — not on the POST/PUT responses.

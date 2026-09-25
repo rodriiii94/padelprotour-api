@@ -228,3 +228,7 @@ sin sets. El proponente también puede retirar su propuesta (mismo endpoint de r
 
 La clasificación y las estadísticas solo cuentan partidos `completed`. El organizador sigue
 pudiendo anotar el resultado directamente como hasta ahora.
+
+Si en 48 h (`result_proposed_at` + 48 h) ningún rival ni el organizador confirma o rechaza,
+un job horario lo confirma solo (`matches:auto-confirm-results`). La app puede mostrar
+«se confirmará automáticamente el …» con esa fecha.

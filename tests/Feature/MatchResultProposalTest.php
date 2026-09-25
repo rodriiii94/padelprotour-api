@@ -5,6 +5,7 @@ use App\Models\Competition;
 use App\Models\PadelMatch;
 use App\Models\Phase;
 use App\Models\User;
+use Illuminate\Console\Scheduling\Schedule;
 use Laravel\Sanctum\Sanctum;
 
 use function Pest\Laravel\postJson;
@@ -142,4 +143,46 @@ test('a proposed result does not count for stats until it is confirmed', functio
     postJson("/api/matches/{$match->id}/result-proposal/confirm")->assertOk();
 
     expect($a1->fresh()->playerSummary()['stats']['wins'])->toBe(1);
+});
+
+test('a proposed result is confirmed automatically after 48 hours without a rival answering', function () {
+    ['match' => $match, 'a1' => $a1] = scheduledMatch();
+    Sanctum::actingAs($a1);
+    postJson("/api/matches/{$match->id}/result-proposal", wonInTwoSets())->assertCreated();
+    $proposedAt = $match->fresh()->result_proposed_at;
+
+    $this->travelTo($proposedAt->copy()->addHours(47));
+    $this->artisan('matches:auto-confirm-results')->assertSuccessful();
+    expect($match->fresh()->status)->toBe('pending_validation');
+
+    $this->travelTo($proposedAt->copy()->addHours(48));
+    $this->artisan('matches:auto-confirm-results')->assertSuccessful();
+    expect($match->fresh()->status)->toBe('completed')->and($match->fresh()->winner_side)->toBe(1);
+    expect($a1->fresh()->playerSummary()['stats']['wins'])->toBe(1);
+});
+
+test('a rejected proposal starts a fresh 48 hour clock when proposed again', function () {
+    ['match' => $match, 'a1' => $a1, 'b1' => $b1] = scheduledMatch();
+    Sanctum::actingAs($a1);
+    postJson("/api/matches/{$match->id}/result-proposal", wonInTwoSets())->assertCreated();
+    $first = $match->fresh()->result_proposed_at;
+
+    Sanctum::actingAs($b1);
+    postJson("/api/matches/{$match->id}/result-proposal/reject")->assertOk();
+    expect($match->fresh()->result_proposed_at)->toBeNull();
+
+    $this->travelTo($first->copy()->addHours(30));
+    Sanctum::actingAs($a1);
+    postJson("/api/matches/{$match->id}/result-proposal", wonInTwoSets())->assertCreated();
+
+    $this->travelTo($first->copy()->addHours(60));
+    $this->artisan('matches:auto-confirm-results')->assertSuccessful();
+    expect($match->fresh()->status)->toBe('pending_validation');
+});
+
+test('the auto-confirm command is scheduled hourly', function () {
+    $events = collect(app(Schedule::class)->events())
+        ->filter(fn ($event) => str_contains($event->command, 'matches:auto-confirm-results'));
+
+    expect($events)->toHaveCount(1)->and($events->first()->expression)->toBe('0 * * * *');
 });

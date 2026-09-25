@@ -57,6 +57,7 @@ class MatchResultController extends Controller
                 'status' => 'pending_validation',
                 'winner_side' => $winnerSide,
                 'result_proposed_by' => $user->id,
+                'result_proposed_at' => now(),
             ])->save();
         });
 
@@ -84,6 +85,7 @@ class MatchResultController extends Controller
                 'status' => 'scheduled',
                 'winner_side' => null,
                 'result_proposed_by' => null,
+                'result_proposed_at' => null,
             ])->save();
         });
 

@@ -152,3 +152,14 @@ gunzip -c ~/backups/padelprotour-AAAA-MM-DD_HHMM.sql.gz | psql -h 127.0.0.1 -U p
 Los backups viven en el mismo disco que la base de datos: protegen de borrados y errores, no de
 perder el servidor. Copia de vez en cuando uno a tu Mac:
 `scp deploy@179.198.210.237:backups/padelprotour-*.sql.gz ~/Backups/`.
+
+## Planificador de tareas (scheduler de Laravel)
+
+Algunas tareas corren solas (p. ej. confirmar resultados propuestos a las 48 h). Laravel las
+ejecuta con un único cron por minuto, que se instala una sola vez como `deploy`:
+
+```bash
+ssh deploy@179.198.210.237 '(crontab -l 2>/dev/null; echo "* * * * * cd /var/www/api && php artisan schedule:run >> /dev/null 2>&1") | crontab -'
+```
+
+Ver qué tareas hay programadas: `ssh deploy@179.198.210.237 'cd /var/www/api && php artisan schedule:list'`.

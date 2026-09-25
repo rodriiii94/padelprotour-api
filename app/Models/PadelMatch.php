@@ -22,6 +22,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class PadelMatch extends Model
 {
+    /** Horas que un resultado propuesto espera a un rival antes de confirmarse solo. */
+    public const AUTO_CONFIRM_HOURS = 48;
+
     /** @use HasFactory<PadelMatchFactory> */
     use HasFactory;
 
@@ -36,6 +39,7 @@ class PadelMatch extends Model
     {
         return [
             'scheduled_at' => 'datetime',
+            'result_proposed_at' => 'datetime',
         ];
     }
 
