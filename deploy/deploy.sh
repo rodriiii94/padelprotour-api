@@ -11,8 +11,8 @@ git pull origin main
 echo "==> composer install"
 composer install --no-dev --optimize-autoloader
 
-echo "==> migraciones"
-php artisan migrate --force
+echo "==> migraciones (con el usuario dueño de las tablas)"
+php artisan migrate --force --database=pgsql_migrate
 
 echo "==> enlace público de storage (fotos de perfil)"
 php artisan storage:link --force

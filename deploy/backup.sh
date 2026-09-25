@@ -18,9 +18,15 @@ chmod 700 "$BACKUP_DIR"
 file="$BACKUP_DIR/padelprotour-$(date +%F_%H%M).sql.gz"
 tmp="$file.partial"
 
-PGPASSWORD="$(env_value DB_PASSWORD)" pg_dump \
+# Usuario de solo lectura si existe (DB_BACKUP_*); si no, el normal de la app.
+PGPASSWORD="$(env_value DB_BACKUP_PASSWORD || true)"
+PGUSER="$(env_value DB_BACKUP_USERNAME || true)"
+[ -n "$PGUSER" ] || { PGUSER="$(env_value DB_USERNAME)"; PGPASSWORD="$(env_value DB_PASSWORD)"; }
+export PGPASSWORD
+
+pg_dump \
   -h "$(env_value DB_HOST)" -p "$(env_value DB_PORT)" \
-  -U "$(env_value DB_USERNAME)" --no-owner --no-privileges \
+  -U "$PGUSER" --no-owner --no-privileges \
   "$(env_value DB_DATABASE)" | gzip -9 > "$tmp"
 
 # Un volcado vacío o truncado no es un backup: no lo damos por bueno.

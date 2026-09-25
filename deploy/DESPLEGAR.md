@@ -163,3 +163,40 @@ ssh deploy@179.198.210.237 '(crontab -l 2>/dev/null; echo "* * * * * cd /var/www
 ```
 
 Ver qué tareas hay programadas: `ssh deploy@179.198.210.237 'cd /var/www/api && php artisan schedule:list'`.
+
+## Roles de la base de datos (mínimo privilegio)
+
+Antes, la web, las migraciones y los backups usaban el mismo usuario de Postgres, que además es
+**dueño de todas las tablas**: con él se puede hacer `DROP TABLE` o `TRUNCATE`. Ahora son tres:
+
+| Rol | Lo usa | Puede |
+|---|---|---|
+| `padelprotour` (dueño) | solo las migraciones (`deploy.sh`) | todo sobre su base |
+| `padelprotour_app` | la web, la cola y Reverb | leer/insertar/modificar/borrar **datos**; nada de estructura. `migrations` solo lectura |
+| `padelprotour_ro` | los backups (`backup.sh`) y consultas de administración | solo `SELECT` |
+
+Postgres solo escucha en `127.0.0.1`, no hay acceso desde internet.
+
+**Aplicarlo (una sola vez, en el VPS, con un usuario con sudo):**
+
+```bash
+ssh deploy@179.198.210.237 'cd /var/www/api && git pull'
+ssh <usuario-con-sudo>@179.198.210.237 'sudo bash /var/www/api/deploy/setup-db-roles.sh'
+```
+
+El script guarda antes una copia del `.env` (`.env.pre-roles.<fecha>`), crea los roles con
+contraseñas aleatorias, actualiza `DB_USERNAME`/`DB_PASSWORD` (app), `DB_MIGRATE_*` (dueño) y
+`DB_BACKUP_*` (solo lectura) en el `.env`, **comprueba los permisos** y solo entonces reinicia la
+web, la cola y Reverb. Si alguna comprobación falla, restaura el `.env` y no toca nada más.
+
+**Volver atrás:** `sudo bash /var/www/api/deploy/setup-db-roles.sh --revert` restaura el último
+`.env` guardado y reinicia los servicios. Los roles nuevos no molestan si no se usan.
+
+**Después:**
+- Las migraciones siguen funcionando igual: `deploy.sh` usa la conexión `pgsql_migrate` (el dueño)
+  y las tablas nuevas dan permisos solas al rol de la app y al de solo lectura.
+- Para consultar datos a mano usa `padelprotour_ro` (`DB_BACKUP_*` del `.env`), no el dueño.
+- Si alguna vez quieres cambiar estructura a mano, hazlo con el dueño (`DB_MIGRATE_*`).
+- `php artisan tinker` usa el rol de la app: lee y escribe datos, pero no puede cambiar la estructura.
+- Un dump de `padelprotour_ro` incluye todos los datos (también los hashes de contraseña): guárdalo
+  como ya se hace (`~/backups`, permisos 700).
