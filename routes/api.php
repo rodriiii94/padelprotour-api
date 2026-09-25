@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CompetitionController;
 use App\Http\Controllers\Api\InviteController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MatchdayPairingController;
+use App\Http\Controllers\Api\MatchResultController;
 use App\Http\Controllers\Api\MatchSetController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\PairController;
@@ -55,6 +56,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('phases.matchday-pairings', MatchdayPairingController::class)->shallow();
     Route::post('/categories/{category}/round-robin', [RoundRobinController::class, 'generate']);
     Route::apiResource('matches.sets', MatchSetController::class)->shallow();
+    Route::post('/matches/{match}/result-proposal', [MatchResultController::class, 'propose']);
+    Route::post('/matches/{match}/result-proposal/confirm', [MatchResultController::class, 'confirm']);
+    Route::post('/matches/{match}/result-proposal/reject', [MatchResultController::class, 'reject']);
 
     Route::get('/categories/{category}/rankings', [RankingController::class, 'index']);
     Route::post('/categories/{category}/rankings/recalculate', [RankingController::class, 'recalculate']);

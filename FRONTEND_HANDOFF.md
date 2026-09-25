@@ -214,3 +214,17 @@ lectura; inscribirse (`POST /categories/{id}/registrations`) nunca dependió de 
 inscribirse el usuario pasa a ser participante y ya no necesita el parámetro.
 
 `POST /competitions/{id}/regenerate-invite` (organizador) invalida el código anterior.
+
+## 11. Resultados propuestos por los jugadores
+
+Flujo: un jugador del partido propone los sets → el partido pasa a `pending_validation`
+(los sets ya están guardados, `winner_side` calculado, `result_proposed_by` = quién propuso) →
+un rival (o el organizador) confirma y pasa a `completed`, o rechaza y vuelve a `scheduled`
+sin sets. El proponente también puede retirar su propuesta (mismo endpoint de rechazar).
+
+- `POST /matches/{id}/result-proposal` `{ sets: [{side1_games, side2_games}, ...] }` → 201
+- `POST /matches/{id}/result-proposal/confirm` → 200 (no lo puede hacer el lado del proponente)
+- `POST /matches/{id}/result-proposal/reject` → 200
+
+La clasificación y las estadísticas solo cuentan partidos `completed`. El organizador sigue
+pudiendo anotar el resultado directamente como hasta ahora.

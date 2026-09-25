@@ -928,6 +928,87 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /matches/{match}/result-proposal:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    post:
+      tags: [Matches]
+      summary: Propose the result of a match (players of the match only)
+      description: >-
+        One of the four players sends the sets (2 or 3). The server validates
+        each set score and that one side ends with exactly 2 sets won. The
+        sets are stored and the match moves to `pending_validation`
+        (`winner_side` set, `result_proposed_by` = caller). Rankings and stats
+        only count `completed` matches, so nothing changes until it is
+        confirmed. 422 if the match is already completed or pending.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sets]
+              properties:
+                sets:
+                  type: array
+                  minItems: 2
+                  maxItems: 3
+                  items:
+                    type: object
+                    required: [side1_games, side2_games]
+                    properties:
+                      side1_games: { type: integer, minimum: 0 }
+                      side2_games: { type: integer, minimum: 0 }
+      responses:
+        "201":
+          description: The match, pending validation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Match" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /matches/{match}/result-proposal/confirm:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    post:
+      tags: [Matches]
+      summary: Confirm a proposed result (a rival of the proposer, or the organizer)
+      description: >-
+        Moves the match to `completed` and recalculates the category ranking.
+        The proposer and their partner cannot confirm. 422 if there is no
+        pending proposal.
+      responses:
+        "200":
+          description: The completed match
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Match" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /matches/{match}/result-proposal/reject:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    post:
+      tags: [Matches]
+      summary: Reject or withdraw a proposed result
+      description: >-
+        A rival of the proposer or the organizer rejects it; the proposer can
+        also withdraw it. The proposed sets are deleted and the match returns
+        to `scheduled`. 422 if there is no pending proposal.
+      responses:
+        "200":
+          description: The match, back to scheduled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Match" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
   /matches/{match}/sets:
     parameters:
       - $ref: "#/components/parameters/MatchId"
@@ -1571,6 +1652,7 @@ components:
             phase_id: { type: integer }
             status: { $ref: "#/components/schemas/MatchStatus" }
             winner_side: { type: integer, enum: [1, 2], nullable: true }
+            result_proposed_by: { type: integer, nullable: true, description: "Player who proposed the result while status is pending_validation; null otherwise." }
             side1_player1:
               allOf: [{ $ref: "#/components/schemas/UserSummary" }]
               description: Present on GET /phases/{phase}/matches, GET /matches/{match}, and the Phase.matches embedded in round-robin generation — not on the POST/PUT responses.

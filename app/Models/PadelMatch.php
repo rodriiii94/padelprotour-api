@@ -89,4 +89,16 @@ class PadelMatch extends Model
     {
         return $this->setsWon(1) >= 2 || $this->setsWon(2) >= 2;
     }
+
+    /**
+     * Lado (1 o 2) en el que juega el usuario, o null si no juega este partido.
+     */
+    public function sideOf(User $user): ?int
+    {
+        return match (true) {
+            in_array($user->id, [$this->side1_player1_id, $this->side1_player2_id], true) => 1,
+            in_array($user->id, [$this->side2_player1_id, $this->side2_player2_id], true) => 2,
+            default => null,
+        };
+    }
 }
