@@ -14,6 +14,9 @@ composer install --no-dev --optimize-autoloader
 echo "==> migraciones"
 php artisan migrate --force
 
+echo "==> enlace público de storage (fotos de perfil)"
+php artisan storage:link --force
+
 echo "==> cachear config/rutas"
 php artisan config:cache
 php artisan route:cache

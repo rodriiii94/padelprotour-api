@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\AvatarController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ChatMessageController;
 use App\Http\Controllers\Api\CompetitionController;
@@ -31,6 +32,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/me', [AuthController::class, 'update']);
     Route::delete('/me', [AuthController::class, 'destroy'])->middleware('throttle:login');
+    Route::post('/me/avatar', [AvatarController::class, 'store'])->middleware('throttle:20,1');
+    Route::delete('/me/avatar', [AvatarController::class, 'destroy']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me/registrations', [MeController::class, 'registrations']);
     Route::get('/me/competitions', [MeController::class, 'competitions']);

@@ -296,6 +296,45 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
+  /me/avatar:
+    post:
+      tags: [Me]
+      summary: Upload the profile photo
+      description: >-
+        multipart/form-data with an `avatar` file (jpg, png or webp, up to 8 MB,
+        at least 64 px on the short side). The server center-crops it to a
+        square, resizes it to 512 px and re-encodes it as JPEG, which drops all
+        metadata (EXIF, GPS). Replaces and deletes the previous photo. Returns
+        the updated user with `avatar_url`.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [avatar]
+              properties:
+                avatar: { type: string, format: binary }
+      responses:
+        "200":
+          description: The updated user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Me]
+      summary: Remove the profile photo
+      description: Deletes the file; the color/emoji avatar is used again.
+      responses:
+        "200":
+          description: The updated user (`avatar_url` null)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /users:
     get:
       tags: [Me]
@@ -1481,6 +1520,7 @@ components:
         dominant_hand: { $ref: "#/components/schemas/DominantHand" }
         avatar_color: { $ref: "#/components/schemas/AvatarColor" }
         avatar_emoji: { type: string, nullable: true }
+        avatar_url: { type: string, format: uri, nullable: true, description: "Profile photo (512x512 JPEG). When present, clients show it instead of the color/emoji avatar." }
         racket: { type: string, nullable: true }
         motto: { type: string, nullable: true }
         availability: { $ref: "#/components/schemas/Availability" }
@@ -1508,6 +1548,7 @@ components:
         city: { type: string, nullable: true }
         avatar_color: { $ref: "#/components/schemas/AvatarColor" }
         avatar_emoji: { type: string, nullable: true }
+        avatar_url: { type: string, format: uri, nullable: true }
 
     PlayerStats:
       type: object
@@ -1539,6 +1580,7 @@ components:
         dominant_hand: { $ref: "#/components/schemas/DominantHand" }
         avatar_color: { $ref: "#/components/schemas/AvatarColor" }
         avatar_emoji: { type: string, nullable: true }
+        avatar_url: { type: string, format: uri, nullable: true, description: "Profile photo (512x512 JPEG). When present, clients show it instead of the color/emoji avatar." }
         racket: { type: string, nullable: true }
         motto: { type: string, nullable: true }
         availability: { $ref: "#/components/schemas/Availability" }

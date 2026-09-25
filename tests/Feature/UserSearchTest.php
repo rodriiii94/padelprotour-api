@@ -47,6 +47,6 @@ test('search results only carry public fields, never the email', function () {
 
     $result = getJson('/api/users?search=Ana')->assertOk()->json('0');
 
-    expect(array_keys($result))->toEqualCanonicalizing(User::SEARCH_COLUMNS)
+    expect(array_keys($result))->toEqualCanonicalizing([...User::SEARCH_COLUMNS, 'avatar_url'])
         ->and($result['city'])->toBe('Sevilla');
 });

@@ -15,6 +15,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable([
@@ -23,7 +24,7 @@ use Laravel\Sanctum\HasApiTokens;
     'bio', 'city', 'preferred_side', 'dominant_hand', 'avatar_color', 'avatar_emoji',
     'racket', 'motto', 'availability', 'social_links',
 ])]
-#[Hidden(['password', 'remember_token', 'email_verification_token'])]
+#[Hidden(['password', 'remember_token', 'email_verification_token', 'avatar_path'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -65,6 +66,28 @@ class User extends Authenticatable
             'availability' => 'array',
             'social_links' => 'array',
         ];
+    }
+
+    /**
+     * URL pública de la foto de perfil, o null si no tiene (entonces se usa el avatar de color/emoji).
+     *
+     * @return Attribute<string|null, never>
+     */
+    protected function avatarUrl(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->avatar_path
+            ? Storage::disk('public')->url($this->avatar_path)
+            : null);
+    }
+
+    /**
+     * Resumen público para listas y buscadores (nunca el email).
+     *
+     * @return array<string, mixed>
+     */
+    public function publicSummary(): array
+    {
+        return [...$this->only(self::SEARCH_COLUMNS), 'avatar_url' => $this->avatar_url];
     }
 
     /**
@@ -194,6 +217,7 @@ class User extends Authenticatable
     {
         DB::transaction(function (): void {
             $this->tokens()->delete();
+            $this->removeAvatarFile();
             $this->following()->detach();
             $this->followers()->detach();
 
@@ -220,11 +244,22 @@ class User extends Authenticatable
                 'dominant_hand' => null,
                 'avatar_color' => null,
                 'avatar_emoji' => null,
+                'avatar_path' => null,
                 'racket' => null,
                 'motto' => null,
                 'availability' => null,
                 'social_links' => null,
             ])->save();
         });
+    }
+
+    /**
+     * Borra del disco la foto de perfil actual, si la hay (no toca la base de datos).
+     */
+    public function removeAvatarFile(): void
+    {
+        if ($this->avatar_path) {
+            Storage::disk('public')->delete($this->avatar_path);
+        }
     }
 }

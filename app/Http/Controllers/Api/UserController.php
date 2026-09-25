@@ -24,7 +24,8 @@ class UserController extends Controller
             ->whereLike('name', "%{$validated['search']}%")
             ->orderBy('name')
             ->limit(20)
-            ->get(User::SEARCH_COLUMNS);
+            ->get([...User::SEARCH_COLUMNS, 'avatar_path'])
+            ->map(fn (User $user) => $user->publicSummary());
     }
 
     /**
@@ -35,6 +36,7 @@ class UserController extends Controller
     {
         return [
             ...$user->only(User::PUBLIC_COLUMNS),
+            'avatar_url' => $user->avatar_url,
             ...$user->playerSummary(),
             'followers_count' => $user->followers()->count(),
             'following_count' => $user->following()->count(),
@@ -65,12 +67,12 @@ class UserController extends Controller
     public function followers(User $user)
     {
         return $user->followers()->orderBy('name')->paginate(20)
-            ->through(fn (User $follower) => $follower->only(User::SEARCH_COLUMNS));
+            ->through(fn (User $follower) => $follower->publicSummary());
     }
 
     public function following(User $user)
     {
         return $user->following()->orderBy('name')->paginate(20)
-            ->through(fn (User $followed) => $followed->only(User::SEARCH_COLUMNS));
+            ->through(fn (User $followed) => $followed->publicSummary());
     }
 }

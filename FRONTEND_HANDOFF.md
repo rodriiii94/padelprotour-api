@@ -240,3 +240,10 @@ un job horario lo confirma solo (`matches:auto-confirm-results`). La app puede m
 - `GET /users/{id}` añade `followers_count`, `following_count` e `is_following`.
 - `GET /competitions?search=` busca por nombre o sede (solo públicas y no canceladas).
 - `GET /users?search=` sigue buscando jugadores solo por nombre.
+
+## 13. Foto de perfil
+
+- `POST /me/avatar` (multipart, campo `avatar`) y `DELETE /me/avatar`. El servidor recorta a
+  cuadrado, redimensiona a 512 px y recodifica a JPEG (sin EXIF/GPS).
+- `avatar_url` aparece en `/me`, `GET /users/{id}`, buscador y listas de seguidores. Si es
+  `null`, se usa el avatar de color/emoji de siempre.

@@ -116,7 +116,7 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return response()->json($request->user()->append(['name_change_available_at', 'has_password']));
+        return response()->json($request->user()->append(['name_change_available_at', 'has_password', 'avatar_url']));
     }
 
     public function update(Request $request)
@@ -168,7 +168,7 @@ class AuthController extends Controller
 
         $user->update($validated);
 
-        return $user->append(['name_change_available_at', 'has_password']);
+        return $user->append(['name_change_available_at', 'has_password', 'avatar_url']);
     }
 
     /**
@@ -292,7 +292,7 @@ class AuthController extends Controller
         $user->tokens()->where('name', $deviceName)->delete();
 
         return response()->json([
-            'user' => $user->append(['name_change_available_at', 'has_password']),
+            'user' => $user->append(['name_change_available_at', 'has_password', 'avatar_url']),
             'token' => $user->createToken($deviceName)->plainTextToken,
         ]);
     }
