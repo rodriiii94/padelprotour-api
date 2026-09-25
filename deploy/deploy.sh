@@ -19,6 +19,10 @@ php artisan storage:link --force
 
 echo "==> cachear config/rutas"
 php artisan config:cache
+# config.php es una copia de TODOS los secretos (BD, APP_KEY, Resend): que solo lo lean deploy
+# (dueño) y php-fpm (grupo www-data), no cualquier usuario del servidor.
+chgrp www-data bootstrap/cache/config.php
+chmod 640 bootstrap/cache/config.php
 php artisan route:cache
 
 echo "==> reiniciar servicios"

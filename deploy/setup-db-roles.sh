@@ -26,7 +26,7 @@ set_env() { # clave valor: reemplaza o añade
 restart_services() {
   [ "$SKIP_SERVICES" = "1" ] && { echo "(servicios no reiniciados: SKIP_SERVICES=1)"; return; }
   echo "==> recargando configuración y reiniciando servicios"
-  sudo -u "$APP_USER" bash -c "cd $APP_DIR && php artisan config:cache && php artisan queue:restart"
+  sudo -u "$APP_USER" bash -c "cd $APP_DIR && php artisan config:cache && chgrp www-data bootstrap/cache/config.php && chmod 640 bootstrap/cache/config.php && php artisan queue:restart"
   systemctl restart reverb queue-worker
   systemctl reload php8.5-fpm
 }
