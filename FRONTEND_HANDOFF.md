@@ -232,3 +232,11 @@ pudiendo anotar el resultado directamente como hasta ahora.
 Si en 48 h (`result_proposed_at` + 48 h) ningún rival ni el organizador confirma o rechaza,
 un job horario lo confirma solo (`matches:auto-confirm-results`). La app puede mostrar
 «se confirmará automáticamente el …» con esa fecha.
+
+## 12. Seguidores y búsqueda
+
+- `POST|DELETE /users/{id}/follow` (sin aprobación, idempotente, no puedes seguirte a ti mismo).
+- `GET /users/{id}/followers` y `/following`: paginados (20), solo campos públicos.
+- `GET /users/{id}` añade `followers_count`, `following_count` e `is_following`.
+- `GET /competitions?search=` busca por nombre o sede (solo públicas y no canceladas).
+- `GET /users?search=` sigue buscando jugadores solo por nombre.

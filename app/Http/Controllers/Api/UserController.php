@@ -31,11 +31,46 @@ class UserController extends Controller
      * Ficha pública de un jugador: todos los perfiles son visibles para
      * cualquier usuario autenticado, salvo el email y los datos de login.
      */
-    public function show(User $user)
+    public function show(Request $request, User $user)
     {
         return [
             ...$user->only(User::PUBLIC_COLUMNS),
             ...$user->playerSummary(),
+            'followers_count' => $user->followers()->count(),
+            'following_count' => $user->following()->count(),
+            'is_following' => $request->user()->following()->whereKey($user->id)->exists(),
         ];
+    }
+
+    /**
+     * Empieza a seguir a un jugador. Idempotente: seguir a quien ya sigues no falla.
+     * No hay aprobación porque todos los perfiles son públicos.
+     */
+    public function follow(Request $request, User $user)
+    {
+        abort_if($request->user()->is($user), 422, 'No puedes seguirte a ti mismo.');
+
+        $request->user()->following()->syncWithoutDetaching([$user->id]);
+
+        return response()->noContent();
+    }
+
+    public function unfollow(Request $request, User $user)
+    {
+        $request->user()->following()->detach($user->id);
+
+        return response()->noContent();
+    }
+
+    public function followers(User $user)
+    {
+        return $user->followers()->orderBy('name')->paginate(20)
+            ->through(fn (User $follower) => $follower->only(User::SEARCH_COLUMNS));
+    }
+
+    public function following(User $user)
+    {
+        return $user->following()->orderBy('name')->paginate(20)
+            ->through(fn (User $followed) => $followed->only(User::SEARCH_COLUMNS));
     }
 }

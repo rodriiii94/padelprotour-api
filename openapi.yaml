@@ -343,6 +343,75 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /users/{user}/follow:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    post:
+      tags: [Me]
+      summary: Follow a player
+      description: One-way and without approval (all profiles are public). Idempotent. 422 if you try to follow yourself.
+      responses:
+        "204": { description: Following }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Me]
+      summary: Unfollow a player
+      description: Idempotent.
+      responses:
+        "204": { description: Not following }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /users/{user}/followers:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    get:
+      tags: [Me]
+      summary: Players who follow this player (paginated, 20/page)
+      description: Public fields only, never the email. Ordered by name.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/PublicUserSummary" }
+                  current_page: { type: integer }
+                  last_page: { type: integer }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /users/{user}/following:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    get:
+      tags: [Me]
+      summary: Players this player follows (paginated, 20/page)
+      description: Same shape as followers.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/PublicUserSummary" }
+                  current_page: { type: integer }
+                  last_page: { type: integer }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /me/registrations:
     get:
       tags: [Me]
@@ -486,6 +555,11 @@ paths:
           required: false
           description: When truthy (1/true), excludes competitions whose end_date is in the past. Competitions with no end_date are always included.
           schema: { type: boolean }
+        - name: search
+          in: query
+          required: false
+          description: Case-insensitive match on name or venue (2-255 chars). Private and cancelled competitions never appear, search or not.
+          schema: { type: string, minLength: 2, maxLength: 255 }
       responses:
         "200":
           description: OK
@@ -1485,6 +1559,9 @@ components:
             id: { type: integer }
             name: { type: string }
             matches: { type: integer }
+        followers_count: { type: integer }
+        following_count: { type: integer }
+        is_following: { type: boolean, description: Whether the caller follows this player. }
 
     AuthToken:
       type: object

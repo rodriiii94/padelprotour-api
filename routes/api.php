@@ -37,6 +37,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{user}', [UserController::class, 'show']);
+    Route::post('/users/{user}/follow', [UserController::class, 'follow']);
+    Route::delete('/users/{user}/follow', [UserController::class, 'unfollow']);
+    Route::get('/users/{user}/followers', [UserController::class, 'followers']);
+    Route::get('/users/{user}/following', [UserController::class, 'following']);
 
     // A partir de aquí van los endpoints de dominio (competitions,
     // categories, registrations, matches, rankings, chat-messages...)

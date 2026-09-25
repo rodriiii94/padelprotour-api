@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -89,6 +90,26 @@ class User extends Authenticatable
     protected function hasPassword(): Attribute
     {
         return Attribute::get(fn (): bool => $this->password !== null);
+    }
+
+    /**
+     * Usuarios a los que sigue.
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function following(): BelongsToMany
+    {
+        return $this->belongsToMany(self::class, 'follows', 'follower_id', 'followed_id')->withTimestamps();
+    }
+
+    /**
+     * Usuarios que le siguen.
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function followers(): BelongsToMany
+    {
+        return $this->belongsToMany(self::class, 'follows', 'followed_id', 'follower_id')->withTimestamps();
     }
 
     public function pairsAsPlayer1(): HasMany
@@ -173,6 +194,8 @@ class User extends Authenticatable
     {
         DB::transaction(function (): void {
             $this->tokens()->delete();
+            $this->following()->detach();
+            $this->followers()->detach();
 
             Registration::query()
                 ->forUser($this)

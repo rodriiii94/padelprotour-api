@@ -13,9 +13,14 @@ class CompetitionController extends Controller
     {
         $this->authorize('viewAny', Competition::class);
 
+        $validated = $request->validate(['search' => ['nullable', 'string', 'min:2', 'max:255']]);
+
         $competitions = Competition::where('is_private', false)
             ->whereNull('cancelled_at')
             ->when($request->boolean('upcoming'), fn ($query) => $query->upcoming())
+            ->when($validated['search'] ?? null, fn ($query, string $search) => $query->where(
+                fn ($query) => $query->whereLike('name', "%{$search}%")->orWhereLike('venue', "%{$search}%")
+            ))
             ->latest()
             ->paginate(15);
         $competitions->getCollection()->each->revealInviteTokenFor($request->user());
