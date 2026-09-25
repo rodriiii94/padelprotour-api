@@ -138,3 +138,26 @@ test('invite lookups are rate limited', function () {
 
     getJson('/api/invites/rate-limit-token')->assertStatus(429);
 });
+
+test('regenerating the invite link replaces the token and invalidates the old one', function () {
+    $organizer = User::factory()->create();
+    $competition = Competition::factory()->create(['organizer_id' => $organizer->id, 'is_private' => true, 'invite_token' => 'old-token']);
+    Sanctum::actingAs($organizer);
+
+    $newToken = postJson("/api/competitions/{$competition->id}/regenerate-invite")
+        ->assertOk()
+        ->json('invite_token');
+
+    expect($newToken)->toBeString()->not->toBe('old-token')->toHaveLength(32);
+    getJson('/api/invites/old-token')->assertNotFound();
+    getJson("/api/invites/{$newToken}")->assertOk();
+});
+
+test('only the organizer can regenerate the invite link', function () {
+    $competition = Competition::factory()->create(['is_private' => true, 'invite_token' => 'old-token']);
+    Sanctum::actingAs(User::factory()->create());
+
+    postJson("/api/competitions/{$competition->id}/regenerate-invite")->assertForbidden();
+
+    expect($competition->fresh()->invite_token)->toBe('old-token');
+});

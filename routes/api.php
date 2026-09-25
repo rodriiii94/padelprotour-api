@@ -46,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('competitions', CompetitionController::class);
     Route::post('/competitions/{competition}/cancel', [CompetitionController::class, 'cancel']);
+    Route::post('/competitions/{competition}/regenerate-invite', [CompetitionController::class, 'regenerateInvite']);
     Route::apiResource('competitions.categories', CategoryController::class)->shallow();
     Route::apiResource('categories.registrations', RegistrationController::class)->shallow();
     Route::apiResource('categories.phases', PhaseController::class)->shallow();

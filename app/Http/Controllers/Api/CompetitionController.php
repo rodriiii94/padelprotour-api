@@ -91,4 +91,16 @@ class CompetitionController extends Controller
 
         return $competition->revealInviteTokenFor($request->user());
     }
+
+    /**
+     * Invalida el enlace de invitación actual y crea uno nuevo, por si se ha filtrado.
+     */
+    public function regenerateInvite(Request $request, Competition $competition)
+    {
+        $this->authorize('update', $competition);
+
+        $competition->forceFill(['invite_token' => Str::random(32)])->save();
+
+        return $competition->revealInviteTokenFor($request->user());
+    }
 }

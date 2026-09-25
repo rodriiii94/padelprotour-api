@@ -549,6 +549,26 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
+  /competitions/{competition}/regenerate-invite:
+    parameters:
+      - $ref: "#/components/parameters/CompetitionId"
+    post:
+      tags: [Competitions]
+      summary: Regenerate the invite link token (organizer only)
+      description: >-
+        Replaces `invite_token` with a new random one. The previous link stops
+        working immediately (GET /invites/{token} returns 404 for it). Use it
+        when a link has leaked.
+      responses:
+        "200":
+          description: OK — the competition with the new `invite_token`
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Competition" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /competitions/{competition}/categories:
     parameters:
       - $ref: "#/components/parameters/CompetitionId"
