@@ -129,3 +129,26 @@ Las migraciones **no** se deshacen solas. Si hace falta, en el VPS:
   de Resend, cámbiala en el `.env` del VPS (apartado 2) y borra la antigua.
 - La *deploy key* que usa el VPS para clonar de GitHub es de solo lectura: aunque se
   filtrara, no permite modificar el repo.
+
+## Backups de la base de datos
+
+`deploy/backup.sh` hace un `pg_dump` comprimido en `/home/deploy/backups` (permisos 700),
+comprueba que el archivo no está vacío ni corrupto y borra los de más de 14 días.
+
+Programarlo (una sola vez, como `deploy`, todos los días a las 03:15):
+
+```bash
+ssh deploy@179.198.210.237 '(crontab -l 2>/dev/null; echo "15 3 * * * /bin/bash /var/www/api/deploy/backup.sh >> /home/deploy/backups/backup.log 2>&1") | crontab -'
+```
+
+Ver que funciona: `ssh deploy@179.198.210.237 'tail -n 5 ~/backups/backup.log; ls -lh ~/backups'`.
+
+Restaurar en una base **vacía** (nunca sobre la que está en uso):
+
+```bash
+gunzip -c ~/backups/padelprotour-AAAA-MM-DD_HHMM.sql.gz | psql -h 127.0.0.1 -U padelprotour padelprotour
+```
+
+Los backups viven en el mismo disco que la base de datos: protegen de borrados y errores, no de
+perder el servidor. Copia de vez en cuando uno a tu Mac:
+`scp deploy@179.198.210.237:backups/padelprotour-*.sql.gz ~/Backups/`.
