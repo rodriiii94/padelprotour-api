@@ -83,6 +83,37 @@ class AuthController extends Controller
         return response()->noContent();
     }
 
+    /**
+     * Elimina la cuenta (anonimiza, no borra el historial de los demás). Pide reautenticar:
+     * la contraseña si la cuenta tiene, o el email si entra solo con Google/Apple.
+     */
+    public function destroy(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->password) {
+            $request->validate(['password' => ['required', 'string']]);
+            if (! Hash::check($request->input('password'), $user->password)) {
+                throw ValidationException::withMessages(['password' => ['La contraseña no es correcta.']]);
+            }
+        } else {
+            $request->validate(['email' => ['required', 'string']]);
+            if (! hash_equals(Str::lower($user->email), Str::lower($request->input('email')))) {
+                throw ValidationException::withMessages(['email' => ['El email no coincide con tu cuenta.']]);
+            }
+        }
+
+        if ($user->hasActiveOrganizedCompetitions()) {
+            throw ValidationException::withMessages([
+                'account' => ['Organizas competiciones en curso. Cancélalas o elimínalas antes de borrar tu cuenta.'],
+            ]);
+        }
+
+        $user->anonymize();
+
+        return response()->noContent();
+    }
+
     public function me(Request $request)
     {
         return response()->json($request->user()->append('name_change_available_at'));

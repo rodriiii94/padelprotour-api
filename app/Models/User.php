@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable([
@@ -137,5 +138,59 @@ class User extends Authenticatable
     public function authoredChatMessages(): HasMany
     {
         return $this->hasMany(ChatMessage::class, 'author_id');
+    }
+
+    /**
+     * Competiciones que el usuario organiza y siguen vivas (ni canceladas ni terminadas).
+     * Mientras existan, la cuenta no se puede eliminar: se quedarían sin organizador.
+     */
+    public function hasActiveOrganizedCompetitions(): bool
+    {
+        return Competition::query()
+            ->where('organizer_id', $this->id)
+            ->whereNull('cancelled_at')
+            ->upcoming()
+            ->exists();
+    }
+
+    /**
+     * Elimina la cuenta conservando el historial de los demás: los partidos, parejas y
+     * resultados siguen existiendo y muestran a "Jugador eliminado". Se borran los datos
+     * personales, el acceso y las inscripciones que aún no estaban confirmadas.
+     */
+    public function anonymize(): void
+    {
+        DB::transaction(function (): void {
+            $this->tokens()->delete();
+
+            Registration::query()
+                ->forUser($this)
+                ->where('status', '!=', 'confirmed')
+                ->delete();
+
+            $this->forceFill([
+                'name' => 'Jugador eliminado',
+                'email' => "eliminado-{$this->id}@deleted.invalid",
+                'password' => null,
+                'remember_token' => null,
+                'provider' => null,
+                'provider_id' => null,
+                'email_verification_token' => null,
+                'email_verified_at' => null,
+                'name_changed_at' => null,
+                'level' => null,
+                'club' => null,
+                'bio' => null,
+                'city' => null,
+                'preferred_side' => null,
+                'dominant_hand' => null,
+                'avatar_color' => null,
+                'avatar_emoji' => null,
+                'racket' => null,
+                'motto' => null,
+                'availability' => null,
+                'social_links' => null,
+            ])->save();
+        });
     }
 }

@@ -271,6 +271,31 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
+    delete:
+      tags: [Auth]
+      summary: Delete the authenticated account
+      description: >-
+        Anonymizes the account: personal data, login methods and tokens are
+        wiped, unconfirmed registrations are removed, and the user shows as
+        "Jugador eliminado" in other players' history (matches and results
+        are kept). Requires re-authentication: `password` for accounts with a
+        password, or `email` for accounts that only use Google/Apple.
+        Rejected with 422 (`account`) while the user organizes a competition
+        that is neither cancelled nor finished. Not reversible.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password: { type: string, description: Required for accounts with a password }
+                email: { type: string, description: Required for social-login-only accounts }
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
   /users:
     get:
       tags: [Me]
