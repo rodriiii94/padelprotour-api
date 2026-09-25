@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -84,23 +85,70 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return response()->json($request->user());
+        return response()->json($request->user()->append('name_change_available_at'));
     }
 
     public function update(Request $request)
     {
+        $user = $request->user();
+
         // Email y password se quedan fuera a propósito: cambiarlos aquí sin
         // reautenticación (contraseña actual, verificación de email...)
         // abriría una vía fácil de secuestro de cuenta.
         $validated = $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
+            'name' => ['sometimes', 'string', 'min:2', 'max:40'],
             'level' => ['sometimes', 'nullable', 'string', 'max:255'],
             'club' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'bio' => ['sometimes', 'nullable', 'string', 'max:200'],
+            'city' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'preferred_side' => ['sometimes', 'nullable', Rule::in(['right', 'left', 'both'])],
+            'dominant_hand' => ['sometimes', 'nullable', Rule::in(['right', 'left'])],
+            'avatar_color' => ['sometimes', 'nullable', Rule::in(User::AVATAR_COLORS)],
+            // Solo símbolos/emojis: sin letras, números ni espacios.
+            'avatar_emoji' => ['sometimes', 'nullable', 'string', 'max:16', 'regex:/^[^\p{L}\p{N}\s]+$/u'],
+            'racket' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'motto' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'availability' => ['sometimes', 'nullable', 'array', 'max:21'],
+            'availability.*' => ['string', Rule::in($this->availabilitySlots())],
+            'social_links' => ['sometimes', 'nullable', 'array:'.implode(',', User::SOCIAL_NETWORKS)],
+            // Se guarda solo el usuario, nunca una URL: la app arma el enlace
+            // con el dominio de cada red, así no hay enlaces arbitrarios.
+            'social_links.*' => ['nullable', 'string', 'regex:/^@?[A-Za-z0-9._-]{1,50}$/'],
         ]);
 
-        $request->user()->update($validated);
+        if (isset($validated['name']) && $validated['name'] !== $user->name) {
+            if ($availableAt = $user->name_change_available_at) {
+                throw ValidationException::withMessages([
+                    'name' => ['Solo puedes cambiar tu nombre cada '.User::NAME_CHANGE_INTERVAL_DAYS.' días. Podrás volver a cambiarlo el '.$availableAt->format('d/m/Y').'.'],
+                ]);
+            }
 
-        return $request->user();
+            $user->forceFill(['name_changed_at' => now()]);
+        }
+
+        if (isset($validated['availability'])) {
+            $validated['availability'] = array_values(array_unique($validated['availability']));
+        }
+
+        if (array_key_exists('social_links', $validated) && is_array($validated['social_links'])) {
+            $links = array_filter(array_map(fn ($handle) => $handle === null ? null : ltrim($handle, '@'), $validated['social_links']));
+            $validated['social_links'] = $links === [] ? null : $links;
+        }
+
+        $user->update($validated);
+
+        return $user->append('name_change_available_at');
+    }
+
+    /**
+     * @return list<string> franjas como "mon-evening"
+     */
+    private function availabilitySlots(): array
+    {
+        return collect(User::AVAILABILITY_DAYS)
+            ->crossJoin(User::AVAILABILITY_PARTS)
+            ->map(fn (array $slot) => implode('-', $slot))
+            ->all();
     }
 
     public function verifyEmail(Request $request)
@@ -213,7 +261,7 @@ class AuthController extends Controller
         $user->tokens()->where('name', $deviceName)->delete();
 
         return response()->json([
-            'user' => $user,
+            'user' => $user->append('name_change_available_at'),
             'token' => $user->createToken($deviceName)->plainTextToken,
         ]);
     }

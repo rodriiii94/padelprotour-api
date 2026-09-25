@@ -34,6 +34,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me/competitions', [MeController::class, 'competitions']);
 
     Route::get('/users', [UserController::class, 'index']);
+    Route::get('/users/{user}', [UserController::class, 'show']);
 
     // A partir de aquí van los endpoints de dominio (competitions,
     // categories, registrations, matches, rankings, chat-messages...)

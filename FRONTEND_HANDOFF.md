@@ -183,6 +183,21 @@ ajustar la UI para que no llegue a ese punto.
 - Esta vez el botón lo monto yo mismo en la app (pantalla de detalle de
   competición), no hace falta que lo hagáis vosotros.
 
+## 9. Perfiles editables y públicos
+
+- **`GET /users/{user}`** (nuevo): ficha pública de cualquier jugador, sin email ni datos de login.
+  Trae los campos del perfil (`bio`, `city`, `preferred_side`, `dominant_hand`, `avatar_color`,
+  `avatar_emoji`, `racket`, `motto`, `availability`, `social_links`), `stats`, `achievements` (claves que
+  traducís vosotros: `first_win`, `matches_10`, `matches_50`, `win_streak_5`, `champion`) y `usual_partner`.
+- **`GET /users?search=`**: **cambio que rompe**: ya solo busca por nombre y devuelve solo datos públicos
+  (`id, name, level, club, city, avatar_color, avatar_emoji`). Ya no hay `email` ni búsqueda por email.
+- **`PUT /me`**: acepta los campos nuevos. El **nombre** solo se puede cambiar cada 30 días (el primer cambio
+  es libre): dentro del bloqueo devuelve `422` con `errors.name` y la fecha. `/me`, `PUT /me` y las respuestas de
+  login traen `name_change_available_at` (`null` = se puede cambiar ya) para mostrar el aviso.
+- Redes sociales: se guarda solo el **usuario** (sin `@` ni URL); la app arma el enlace con el dominio de cada red.
+- Colores de avatar: `lime, orange, sky, violet, rose, teal` (la app decide el color real de cada clave).
+- Lados: `right` = drive, `left` = revés. Disponibilidad: `"mon-evening"` (día × mañana/tarde/noche).
+
 ---
 
 Todo lo anterior está probado (tests de feature) y documentado en

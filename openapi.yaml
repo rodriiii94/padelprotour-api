@@ -242,19 +242,26 @@ paths:
       tags: [Auth]
       summary: Update your own profile
       description: >
-        Only name/level/club are editable here. email and password are
-        intentionally not accepted by this endpoint (changing either
-        without re-authentication would be an account-takeover risk) —
-        any such fields in the request body are silently ignored.
+        email and password are intentionally not accepted by this endpoint
+        (changing either without re-authentication would be an
+        account-takeover risk) — any such fields in the request body are
+        silently ignored. All fields are optional; send only what changes.
+
+
+        **Name lock**: the first name change is free; after that the name
+        can only be changed once every 30 days. A change inside the lock
+        returns 422 with `errors.name` including the date it will be
+        allowed again. Re-sending the current name is not a change. The
+        response includes `name_change_available_at` (null = can change
+        now).
+
+
+        Social links store only the user handle (a leading `@` is
+        stripped); clients build the URL with each network's own domain.
       requestBody:
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                name: { type: string, maxLength: 255 }
-                level: { type: string, nullable: true, example: "3ª" }
-                club: { type: string, nullable: true }
+            schema: { $ref: "#/components/schemas/ProfileInput" }
       responses:
         "200":
           description: OK
@@ -267,11 +274,13 @@ paths:
   /users:
     get:
       tags: [Me]
-      summary: Search players by name or email
+      summary: Search players by name
       description: >
         Useful to find a partner's user id before creating a Pair.
-        `search` is required (min 2 characters) — there is no way to list
-        the full user directory unfiltered. Returns at most 20 matches.
+        `search` is required (min 2 characters, case-insensitive match on
+        the name only) — there is no way to list the full user directory
+        unfiltered, and players cannot be looked up by email. Returns at
+        most 20 matches with public fields only (never the email).
       parameters:
         - name: search
           in: query
@@ -284,9 +293,30 @@ paths:
             application/json:
               schema:
                 type: array
-                items: { $ref: "#/components/schemas/User" }
+                items: { $ref: "#/components/schemas/PublicUserSummary" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "422": { $ref: "#/components/responses/ValidationError" }
+
+  /users/{user}:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    get:
+      tags: [Me]
+      summary: A player's public profile
+      description: >
+        Every profile is public to any authenticated user, except the email
+        and login data (`provider`, `provider_id`), which are never
+        returned. Includes stats computed from the player's completed
+        matches, achievements (keys the client translates) and the usual
+        partner.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlayerProfile" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /me/registrations:
     get:
@@ -1126,6 +1156,7 @@ components:
       description: Sanctum personal access token, as returned by /register or /login.
 
   parameters:
+    UserId: { name: user, in: path, required: true, schema: { type: integer } }
     PairId: { name: pair, in: path, required: true, schema: { type: integer } }
     CompetitionId: { name: competition, in: path, required: true, schema: { type: integer } }
     CategoryId: { name: category, in: path, required: true, schema: { type: integer } }
@@ -1179,18 +1210,153 @@ components:
             type: array
             items: { type: string }
 
+    ProfileInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 40, description: "Subject to the 30-day lock." }
+        level: { type: string, nullable: true, example: "3ª" }
+        club: { type: string, nullable: true }
+        bio: { type: string, nullable: true, maxLength: 200 }
+        city: { type: string, nullable: true, maxLength: 80 }
+        preferred_side: { $ref: "#/components/schemas/PreferredSide" }
+        dominant_hand: { $ref: "#/components/schemas/DominantHand" }
+        avatar_color: { $ref: "#/components/schemas/AvatarColor" }
+        avatar_emoji: { type: string, nullable: true, maxLength: 16, example: "🎾", description: "Symbols/emoji only: no letters, digits or spaces." }
+        racket: { type: string, nullable: true, maxLength: 80 }
+        motto: { type: string, nullable: true, maxLength: 80 }
+        availability: { $ref: "#/components/schemas/Availability" }
+        social_links: { $ref: "#/components/schemas/SocialLinks" }
+
+    PreferredSide:
+      type: string
+      nullable: true
+      enum: [right, left, both, null]
+      description: right = drive, left = revés.
+
+    DominantHand:
+      type: string
+      nullable: true
+      enum: [right, left, null]
+
+    AvatarColor:
+      type: string
+      nullable: true
+      enum: [lime, orange, sky, violet, rose, teal, null]
+      description: Palette key; the client maps it to an actual colour.
+
+    Availability:
+      type: array
+      nullable: true
+      maxItems: 21
+      items:
+        type: string
+        pattern: "^(mon|tue|wed|thu|fri|sat|sun)-(morning|afternoon|evening)$"
+        example: "mon-evening"
+
+    SocialLinks:
+      type: object
+      nullable: true
+      description: Network => user handle (no URL, no leading @).
+      properties:
+        instagram: { type: string, nullable: true, example: rodri.padel }
+        tiktok: { type: string, nullable: true }
+        x: { type: string, nullable: true }
+        youtube: { type: string, nullable: true }
+        facebook: { type: string, nullable: true }
+      additionalProperties: false
+
     User:
       type: object
+      description: The authenticated user's own account (includes the email).
       properties:
         id: { type: integer }
         name: { type: string }
         email: { type: string, format: email }
         level: { type: string, nullable: true, example: "3ª" }
         club: { type: string, nullable: true }
+        bio: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        preferred_side: { $ref: "#/components/schemas/PreferredSide" }
+        dominant_hand: { $ref: "#/components/schemas/DominantHand" }
+        avatar_color: { $ref: "#/components/schemas/AvatarColor" }
+        avatar_emoji: { type: string, nullable: true }
+        racket: { type: string, nullable: true }
+        motto: { type: string, nullable: true }
+        availability: { $ref: "#/components/schemas/Availability" }
+        social_links: { $ref: "#/components/schemas/SocialLinks" }
+        name_changed_at: { type: string, format: date-time, nullable: true }
+        name_change_available_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: "When the name can be changed again; null = can change it now. Present on /me, PUT /me and auth responses."
         provider: { type: string, nullable: true, enum: [google, apple, null], description: null for email/password accounts. }
         email_verified_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+
+    PublicUserSummary:
+      type: object
+      description: What a player search returns about someone else. Never includes the email.
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        level: { type: string, nullable: true }
+        club: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        avatar_color: { $ref: "#/components/schemas/AvatarColor" }
+        avatar_emoji: { type: string, nullable: true }
+
+    PlayerStats:
+      type: object
+      description: Computed from the player's completed matches.
+      properties:
+        matches_played: { type: integer }
+        wins: { type: integer }
+        losses: { type: integer }
+        win_rate: { type: integer, nullable: true, description: "Percentage 0-100; null with no matches." }
+        current_streak: { type: integer, description: Consecutive wins up to the most recent match. }
+        best_streak: { type: integer }
+        sets_won: { type: integer }
+        sets_lost: { type: integer }
+        games_won: { type: integer }
+        games_lost: { type: integer }
+        competitions_played: { type: integer }
+
+    PlayerProfile:
+      type: object
+      description: Public profile of a player. Never includes the email or login data.
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        level: { type: string, nullable: true }
+        club: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        bio: { type: string, nullable: true }
+        preferred_side: { $ref: "#/components/schemas/PreferredSide" }
+        dominant_hand: { $ref: "#/components/schemas/DominantHand" }
+        avatar_color: { $ref: "#/components/schemas/AvatarColor" }
+        avatar_emoji: { type: string, nullable: true }
+        racket: { type: string, nullable: true }
+        motto: { type: string, nullable: true }
+        availability: { $ref: "#/components/schemas/Availability" }
+        social_links: { $ref: "#/components/schemas/SocialLinks" }
+        created_at: { type: string, format: date-time }
+        stats: { $ref: "#/components/schemas/PlayerStats" }
+        achievements:
+          type: array
+          items: { type: string, enum: [first_win, matches_10, matches_50, win_streak_5, champion] }
+          description: >
+            Unlocked achievements as keys. champion = first in a category of
+            a finished, non-cancelled competition.
+        usual_partner:
+          type: object
+          nullable: true
+          description: Teammate with the most completed matches together (at least 2).
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            matches: { type: integer }
 
     AuthToken:
       type: object
