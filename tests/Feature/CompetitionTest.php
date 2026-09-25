@@ -36,7 +36,33 @@ test('creating a competition requires the mandatory fields', function () {
 
     postJson('/api/competitions', [])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['type', 'name', 'start_date']);
+        ->assertJsonValidationErrors(['type', 'name'])
+        ->assertJsonMissingValidationErrors('start_date');
+});
+
+test('the start date is optional when creating and updating a competition', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $id = postJson('/api/competitions', ['type' => 'league', 'name' => 'Liga sin fecha'])
+        ->assertCreated()
+        ->assertJsonPath('start_date', null)
+        ->json('id');
+
+    putJson("/api/competitions/{$id}", ['start_date' => now()->addWeek()->toDateString()])->assertOk();
+    putJson("/api/competitions/{$id}", ['start_date' => null])->assertOk()->assertJsonPath('start_date', null);
+});
+
+test('an end date is still checked against the start date when one is given', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    postJson('/api/competitions', [
+        'type' => 'league', 'name' => 'Fechas mal',
+        'start_date' => now()->addWeek()->toDateString(), 'end_date' => now()->toDateString(),
+    ])->assertUnprocessable()->assertJsonValidationErrors('end_date');
+
+    postJson('/api/competitions', ['type' => 'league', 'name' => 'Solo fin', 'end_date' => now()->addMonth()->toDateString()])
+        ->assertCreated();
 });
 
 test('any authenticated user can list and view competitions', function () {

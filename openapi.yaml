@@ -1594,12 +1594,12 @@ components:
 
     CompetitionInput:
       type: object
-      required: [type, name, start_date]
+      required: [type, name]
       properties:
         type: { $ref: "#/components/schemas/CompetitionType" }
         name: { type: string, maxLength: 255 }
         venue: { type: string, nullable: true }
-        start_date: { type: string, format: date }
+        start_date: { type: string, format: date, nullable: true, description: "Optional. When sent, end_date and registration_closes_at are checked against it." }
         end_date: { type: string, format: date, nullable: true }
         registration_closes_at: { type: string, format: date-time, nullable: true }
         is_private:

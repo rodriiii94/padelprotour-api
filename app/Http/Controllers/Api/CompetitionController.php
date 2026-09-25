@@ -36,9 +36,7 @@ class CompetitionController extends Controller
             'type' => ['required', 'string', 'in:tournament,league'],
             'name' => ['required', 'string', 'max:255'],
             'venue' => ['nullable', 'string', 'max:255'],
-            'start_date' => ['required', 'date'],
-            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
-            'registration_closes_at' => ['nullable', 'date', 'before_or_equal:start_date'],
+            ...$this->dateRules($request),
             'is_private' => ['sometimes', 'boolean'],
         ]);
 
@@ -66,9 +64,7 @@ class CompetitionController extends Controller
             'type' => ['sometimes', 'string', 'in:tournament,league'],
             'name' => ['sometimes', 'string', 'max:255'],
             'venue' => ['nullable', 'string', 'max:255'],
-            'start_date' => ['sometimes', 'date'],
-            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
-            'registration_closes_at' => ['nullable', 'date', 'before_or_equal:start_date'],
+            ...$this->dateRules($request),
             'is_private' => ['sometimes', 'boolean'],
         ]);
 
@@ -107,5 +103,22 @@ class CompetitionController extends Controller
         $competition->forceFill(['invite_token' => Str::random(32)])->save();
 
         return $competition->revealInviteTokenFor($request->user());
+    }
+
+    /**
+     * Fechas de la competición. La de inicio es opcional; el orden entre fechas solo se
+     * comprueba contra ella si se ha enviado.
+     *
+     * @return array<string, list<string>>
+     */
+    private function dateRules(Request $request): array
+    {
+        $hasStart = $request->filled('start_date');
+
+        return [
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', ...($hasStart ? ['after_or_equal:start_date'] : [])],
+            'registration_closes_at' => ['nullable', 'date', ...($hasStart ? ['before_or_equal:start_date'] : [])],
+        ];
     }
 }
