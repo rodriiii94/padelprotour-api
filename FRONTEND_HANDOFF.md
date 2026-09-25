@@ -203,3 +203,14 @@ ajustar la UI para que no llegue a ese punto.
 Todo lo anterior está probado (tests de feature) y documentado en
 `openapi.yaml`. Si algo no cuadra con el comportamiento real, es un bug —
 avisad.
+
+## 10. Leer una competición privada con el código de invitación
+
+Quien aún no participa recibe 403 en las lecturas de una competición privada
+(`GET /competitions/{id}`, `/categories/{id}`, `/categories/{id}/phases`,
+`/categories/{id}/rankings`, partidos…). Añadiendo `?invite=<invite_token>` a esas
+peticiones se permite la lectura si el código es el de esa competición. Solo abre la
+lectura; inscribirse (`POST /categories/{id}/registrations`) nunca dependió de ello. Al
+inscribirse el usuario pasa a ser participante y ya no necesita el parámetro.
+
+`POST /competitions/{id}/regenerate-invite` (organizador) invalida el código anterior.

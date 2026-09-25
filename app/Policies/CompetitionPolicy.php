@@ -20,7 +20,9 @@ class CompetitionPolicy
      */
     public function view(User $user, Competition $competition): bool
     {
-        return ! $competition->is_private || $competition->hasParticipant($user);
+        return ! $competition->is_private
+            || $competition->hasParticipant($user)
+            || $this->presentsInviteToken($competition);
     }
 
     /**
@@ -53,5 +55,19 @@ class CompetitionPolicy
     public function participate(User $user, Competition $competition): bool
     {
         return $competition->hasParticipant($user);
+    }
+
+    /**
+     * Quien todavía no participa entra a una competición privada con el código de su
+     * enlace de invitación (`?invite=`): conocerlo es en sí mismo la autorización, igual
+     * que en InviteController. Solo abre la lectura; inscribirse no depende de esto.
+     */
+    private function presentsInviteToken(Competition $competition): bool
+    {
+        $token = request()->query('invite');
+
+        return is_string($token)
+            && $competition->invite_token !== null
+            && hash_equals($competition->invite_token, $token);
     }
 }

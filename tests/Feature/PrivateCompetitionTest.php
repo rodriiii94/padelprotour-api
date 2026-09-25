@@ -161,3 +161,26 @@ test('only the organizer can regenerate the invite link', function () {
 
     expect($competition->fresh()->invite_token)->toBe('old-token');
 });
+
+test('an invited user can read a private competition and its category with the invite token, and joins from there', function () {
+    $competition = Competition::factory()->create(['is_private' => true, 'invite_token' => 'invite-token']);
+    $category = Category::factory()->create(['competition_id' => $competition->id]);
+    Sanctum::actingAs(User::factory()->create());
+
+    getJson("/api/categories/{$category->id}")->assertForbidden();
+    getJson("/api/categories/{$category->id}?invite=wrong-token")->assertForbidden();
+    getJson("/api/competitions/{$competition->id}?invite=wrong-token")->assertForbidden();
+
+    getJson("/api/categories/{$category->id}?invite=invite-token")->assertOk();
+    getJson("/api/competitions/{$competition->id}?invite=invite-token")->assertOk();
+    getJson("/api/categories/{$category->id}/phases?invite=invite-token")->assertOk();
+    getJson("/api/categories/{$category->id}/rankings?invite=invite-token")->assertOk();
+});
+
+test('the invite token does not open a different private competition', function () {
+    $other = Competition::factory()->create(['is_private' => true, 'invite_token' => 'other-token']);
+    Competition::factory()->create(['is_private' => true, 'invite_token' => 'invite-token']);
+    Sanctum::actingAs(User::factory()->create());
+
+    getJson("/api/competitions/{$other->id}?invite=invite-token")->assertForbidden();
+});
