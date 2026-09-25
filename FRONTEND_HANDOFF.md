@@ -247,3 +247,11 @@ un job horario lo confirma solo (`matches:auto-confirm-results`). La app puede m
   cuadrado, redimensiona a 512 px y recodifica a JPEG (sin EXIF/GPS).
 - `avatar_url` aparece en `/me`, `GET /users/{id}`, buscador y listas de seguidores. Si es
   `null`, se usa el avatar de color/emoji de siempre.
+
+## 14. Chat de partido
+
+Los cuatro jugadores y el organizador pueden hablar para concretar día, hora y pista.
+`GET|POST /matches/{id}/messages` (lista paginada, más recientes primero) y
+`DELETE /match-messages/{id}` (su autor o el organizador). 403 para quien no participe. No hay
+tiempo real: la app consulta cada pocos segundos mientras la pantalla está abierta. Al eliminar
+una cuenta se borran sus mensajes.

@@ -1041,6 +1041,69 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /matches/{match}/messages:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    get:
+      tags: [Matches]
+      summary: Match chat messages (paginated, newest first, 30/page)
+      description: >-
+        Only the four players of the match and the competition organizer can
+        read or write. Everyone else gets 403. The app shows them in
+        chronological order and polls for new ones.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/MatchMessage" }
+                  current_page: { type: integer }
+                  last_page: { type: integer }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Matches]
+      summary: Send a message to the match chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, maxLength: 1000 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MatchMessage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /match-messages/{message}:
+    parameters:
+      - name: message
+        in: path
+        required: true
+        schema: { type: integer }
+    delete:
+      tags: [Matches]
+      summary: Delete a chat message (its author or the organizer)
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /matches/{match}/result-proposal:
     parameters:
       - $ref: "#/components/parameters/MatchId"
@@ -1549,6 +1612,14 @@ components:
         avatar_color: { $ref: "#/components/schemas/AvatarColor" }
         avatar_emoji: { type: string, nullable: true }
         avatar_url: { type: string, format: uri, nullable: true }
+
+    MatchMessage:
+      type: object
+      properties:
+        id: { type: integer }
+        body: { type: string }
+        created_at: { type: string, format: date-time }
+        author: { $ref: "#/components/schemas/PublicUserSummary" }
 
     PlayerStats:
       type: object

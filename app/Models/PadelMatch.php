@@ -68,6 +68,11 @@ class PadelMatch extends Model
         return $this->belongsTo(User::class, 'side2_player2_id');
     }
 
+    public function messages(): HasMany
+    {
+        return $this->hasMany(MatchMessage::class, 'match_id');
+    }
+
     public function matchSets(): HasMany
     {
         return $this->hasMany(MatchSet::class, 'match_id');

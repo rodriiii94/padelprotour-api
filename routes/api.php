@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\CompetitionController;
 use App\Http\Controllers\Api\InviteController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MatchdayPairingController;
+use App\Http\Controllers\Api\MatchMessageController;
 use App\Http\Controllers\Api\MatchResultController;
 use App\Http\Controllers\Api\MatchSetController;
 use App\Http\Controllers\Api\MeController;
@@ -63,6 +64,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('phases.matchday-pairings', MatchdayPairingController::class)->shallow();
     Route::post('/categories/{category}/round-robin', [RoundRobinController::class, 'generate']);
     Route::apiResource('matches.sets', MatchSetController::class)->shallow();
+    Route::get('/matches/{match}/messages', [MatchMessageController::class, 'index']);
+    Route::post('/matches/{match}/messages', [MatchMessageController::class, 'store'])->middleware('throttle:60,1');
+    Route::delete('/match-messages/{message}', [MatchMessageController::class, 'destroy']);
     Route::post('/matches/{match}/result-proposal', [MatchResultController::class, 'propose']);
     Route::post('/matches/{match}/result-proposal/confirm', [MatchResultController::class, 'confirm']);
     Route::post('/matches/{match}/result-proposal/reject', [MatchResultController::class, 'reject']);

@@ -218,6 +218,7 @@ class User extends Authenticatable
         DB::transaction(function (): void {
             $this->tokens()->delete();
             $this->removeAvatarFile();
+            MatchMessage::query()->where('author_id', $this->id)->delete();
             $this->following()->detach();
             $this->followers()->detach();
 
