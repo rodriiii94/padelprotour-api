@@ -80,6 +80,17 @@ class User extends Authenticatable
         })->withoutObjectCaching();
     }
 
+    /**
+     * Si la cuenta tiene contraseña (false: solo entra con Google/Apple). La app lo usa para
+     * saber qué pedir al eliminar la cuenta. Nunca expone la contraseña.
+     *
+     * @return Attribute<bool, never>
+     */
+    protected function hasPassword(): Attribute
+    {
+        return Attribute::get(fn (): bool => $this->password !== null);
+    }
+
     public function pairsAsPlayer1(): HasMany
     {
         return $this->hasMany(Pair::class, 'player1_id');

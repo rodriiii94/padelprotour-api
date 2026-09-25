@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
 
 use function Pest\Laravel\deleteJson;
+use function Pest\Laravel\getJson;
 use function Pest\Laravel\postJson;
 
 test('guests cannot delete an account', function () {
@@ -82,4 +83,12 @@ test('an organizer with a running competition cannot delete the account until it
     $competition->forceFill(['cancelled_at' => now()])->save();
 
     deleteJson('/api/me', ['password' => 'secret-pass'])->assertNoContent();
+});
+
+test('me tells the app whether the account has a password', function () {
+    Sanctum::actingAs(User::factory()->create(['password' => Hash::make('secret-pass')]));
+    getJson('/api/me')->assertOk()->assertJsonPath('has_password', true)->assertJsonMissingPath('password');
+
+    Sanctum::actingAs(User::factory()->create(['password' => null, 'provider' => 'google', 'provider_id' => 'x']));
+    getJson('/api/me')->assertOk()->assertJsonPath('has_password', false);
 });

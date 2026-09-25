@@ -1335,6 +1335,7 @@ components:
           format: date-time
           nullable: true
           description: "When the name can be changed again; null = can change it now. Present on /me, PUT /me and auth responses."
+        has_password: { type: boolean, description: "false for accounts that only use Google/Apple. Present on /me, PUT /me and auth responses; decides whether DELETE /me asks for password or email." }
         provider: { type: string, nullable: true, enum: [google, apple, null], description: null for email/password accounts. }
         email_verified_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
