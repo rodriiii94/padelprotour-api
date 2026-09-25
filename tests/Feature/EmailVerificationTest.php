@@ -54,3 +54,14 @@ test('resending does nothing for an already verified account', function () {
 
     Notification::assertNothingSent();
 });
+
+test('the verification email links to both the web app and the mobile app', function () {
+    config(['app.frontend_url' => 'https://web.example.test/']);
+    $user = User::factory()->create(['email_verified_at' => null]);
+
+    $html = (string) (new VerifyEmailNotification('tok-123'))->toMail($user)->render();
+
+    expect($html)
+        ->toContain('href="https://web.example.test/verify-email?token=tok-123"')
+        ->toContain('href="padelontourapp://verify-email?token=tok-123"');
+});

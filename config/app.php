@@ -56,6 +56,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Frontend URL
+    |--------------------------------------------------------------------------
+    |
+    | Dirección pública de la web (Expo web), distinta de la de esta API.
+    | Se usa para los enlaces de los emails que abre la versión web.
+    |
+    */
+
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:8081'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
