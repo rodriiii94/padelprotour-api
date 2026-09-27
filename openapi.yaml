@@ -39,7 +39,11 @@ paths:
       description: >
         Rate limited to 5 requests/minute per IP. Does NOT return a token —
         the account must be verified via POST /email/verify (deep link sent
-        by email) before it can log in. See VerifyEmailNotification.
+        by email) before it can log in. See VerifyEmailNotification. The
+        password is checked against known public data breaches (k-anonymity
+        query to haveibeenpwned.com — never sends the actual password; skipped
+        without blocking registration if that check fails) and rejected with
+        422 if it has appeared in one.
       requestBody:
         required: true
         content:
@@ -49,8 +53,8 @@ paths:
               required: [name, email, password]
               properties:
                 name: { type: string, maxLength: 255 }
-                email: { type: string, format: email }
-                password: { type: string, minLength: 8 }
+                email: { type: string, format: email, maxLength: 255 }
+                password: { type: string, minLength: 8, maxLength: 255 }
       responses:
         "201":
           description: Account created, unverified
@@ -70,7 +74,10 @@ paths:
       summary: Exchange credentials for a token
       security: []
       description: >
-        Rate limited to 5 requests/minute per email+IP combination. 403 if
+        Rate limited to 5 requests/minute per email+IP combination, AND to
+        15 requests/15 minutes per email regardless of IP (closes the gap
+        where a distributed attacker — many source IPs — could otherwise
+        brute-force one target account by never repeating an IP). 403 if
         the account's email isn't verified yet. Logging in again with the
         same device_name revokes the previous token for that device.
       requestBody:
@@ -81,8 +88,8 @@ paths:
               type: object
               required: [email, password, device_name]
               properties:
-                email: { type: string, format: email }
-                password: { type: string }
+                email: { type: string, format: email, maxLength: 255 }
+                password: { type: string, maxLength: 255 }
                 device_name: { type: string }
       responses:
         "200":
@@ -281,7 +288,9 @@ paths:
         are kept). Requires re-authentication: `password` for accounts with a
         password, or `email` for accounts that only use Google/Apple.
         Rejected with 422 (`account`) while the user organizes a competition
-        that is neither cancelled nor finished. Not reversible.
+        that is neither cancelled nor finished. Not reversible. Rate limited
+        to 5 requests/minute per authenticated user (not per IP, so one
+        person's failed attempts never lock out another behind the same IP).
       requestBody:
         required: true
         content:
@@ -295,6 +304,7 @@ paths:
         "204": { description: Deleted }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /me/avatar:
     post:

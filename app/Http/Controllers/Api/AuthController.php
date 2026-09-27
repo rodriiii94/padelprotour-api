@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -26,8 +27,11 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            // ->uncompromised() consulta el recuento de filtraciones de la contraseña vía
+            // k-anonimato (solo se manda un prefijo de su hash, nunca la contraseña) contra
+            // haveibeenpwned.com; si la consulta falla, no bloquea el registro.
+            'password' => ['required', Password::min(8)->max(255)->uncompromised()],
         ]);
 
         $user = User::create([
@@ -45,17 +49,26 @@ class AuthController extends Controller
         ], 201);
     }
 
+    /**
+     * Hash señuelo (de un valor cualquiera, nunca una contraseña real) para que
+     * `Hash::check` corra siempre, exista o no la cuenta -- si no, un email sin cuenta
+     * responde en milisegundos y uno con cuenta tarda lo que tarda bcrypt, y ese tiempo
+     * de respuesta delata qué emails están registrados.
+     */
+    private const DUMMY_PASSWORD_HASH = '$2y$12$sTwMRYQ95mKE416nk041tOkcknT6Ncs48TkH9gqJulUxfKAyJZbR2';
+
     public function login(Request $request)
     {
         $validated = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
+            'email' => ['required', 'email', 'max:255'],
+            'password' => ['required', 'string', 'max:255'],
             'device_name' => ['required', 'string'], // p.ej. "iphone-de-marta", "web-chrome"
         ]);
 
         $user = User::where('email', $validated['email'])->first();
+        $passwordMatches = Hash::check($validated['password'], $user->password ?? self::DUMMY_PASSWORD_HASH);
 
-        if (! $user || ! $user->password || ! Hash::check($validated['password'], $user->password)) {
+        if (! $user || ! $user->password || ! $passwordMatches) {
             throw ValidationException::withMessages([
                 'email' => ['Las credenciales no son correctas.'],
             ]);

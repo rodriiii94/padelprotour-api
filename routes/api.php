@@ -32,7 +32,7 @@ Route::post('/email/resend', [AuthController::class, 'resendVerificationEmail'])
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/me', [AuthController::class, 'update']);
-    Route::delete('/me', [AuthController::class, 'destroy'])->middleware('throttle:login');
+    Route::delete('/me', [AuthController::class, 'destroy'])->middleware('throttle:account-delete');
     Route::post('/me/avatar', [AvatarController::class, 'store'])->middleware('throttle:20,1');
     Route::delete('/me/avatar', [AvatarController::class, 'destroy']);
     Route::post('/logout', [AuthController::class, 'logout']);

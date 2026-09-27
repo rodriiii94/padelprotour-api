@@ -22,10 +22,23 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Por email+IP: limita intentos de fuerza bruta contra una cuenta
-        // concreta sin bloquear a todo el mundo detrás de la misma IP.
+        // Dos límites a la vez: por email+IP (no bloquea a todo el mundo detrás de la
+        // misma IP) y por email solo, más laxo pero sin importar la IP -- si no, un
+        // ataque repartido entre muchas IPs (habitual con proxies baratos) se salta el
+        // primero probando siempre desde una IP distinta contra la misma cuenta.
         RateLimiter::for('login', function (Request $request) {
-            return Limit::perMinute(5)->by(strtolower((string) $request->input('email')).'|'.$request->ip());
+            $email = strtolower((string) $request->input('email'));
+
+            return [
+                Limit::perMinute(5)->by($email.'|'.$request->ip()),
+                Limit::perMinutes(15, 15)->by('login-email:'.$email),
+            ];
+        });
+
+        // Cuenta actual, no `email` (esta ruta es DELETE /me, ya autenticada): así los
+        // intentos fallidos de un usuario no consumen el límite de otro que comparta IP.
+        RateLimiter::for('account-delete', function (Request $request) {
+            return Limit::perMinute(5)->by($request->user()?->id ?? $request->ip());
         });
 
         RateLimiter::for('register', function (Request $request) {
