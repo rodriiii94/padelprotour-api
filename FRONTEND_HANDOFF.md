@@ -208,10 +208,15 @@ avisad.
 
 Quien aún no participa recibe 403 en las lecturas de una competición privada
 (`GET /competitions/{id}`, `/categories/{id}`, `/categories/{id}/phases`,
-`/categories/{id}/rankings`, partidos…). Añadiendo `?invite=<invite_token>` a esas
-peticiones se permite la lectura si el código es el de esa competición. Solo abre la
-lectura; inscribirse (`POST /categories/{id}/registrations`) nunca dependió de ello. Al
-inscribirse el usuario pasa a ser participante y ya no necesita el parámetro.
+`/categories/{id}/rankings`, `/categories/{id}/registrations`, partidos…). Añadiendo
+`?invite=<invite_token>` a esas peticiones se permite la lectura si el código es el de esa
+competición.
+
+**`POST /categories/{id}/registrations` exige el mismo código** (antes no lo comprobaba: se
+podía entrar a una competición privada sin invitación adivinando el id de categoría). Añade
+`?invite=<invite_token>` también al inscribirte, no solo al leer. Una vez creada la
+inscripción el usuario pasa a ser participante y ya no necesita el parámetro en ninguna
+petición posterior, ni siquiera para otras categorías de la misma competición.
 
 `POST /competitions/{id}/regenerate-invite` (organizador) invalida el código anterior.
 

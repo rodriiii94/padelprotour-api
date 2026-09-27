@@ -13,7 +13,7 @@ class RegistrationController extends Controller
 {
     public function index(Category $category)
     {
-        $this->authorize('viewAny', Registration::class);
+        $this->authorize('view', $category->competition);
 
         return $category->registrations()
             ->with(['player:id,name', 'pair.player1:id,name', 'pair.player2:id,name'])
@@ -23,6 +23,11 @@ class RegistrationController extends Controller
 
     public function store(Request $request, Category $category)
     {
+        // Inscribirse exige poder ver la competición: ya se es participante, o (si es
+        // privada) se presenta su código de invitación con `?invite=`. Sin este check,
+        // cualquiera podía unirse a una competición privada adivinando el id de categoría,
+        // sin haber visto nunca el enlace de invitación.
+        $this->authorize('view', $category->competition);
         $this->authorize('create', Registration::class);
 
         // Pareja fija para torneos y categorías de liga "fixed_pair" (o sin

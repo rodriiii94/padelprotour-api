@@ -520,7 +520,7 @@ paths:
       - $ref: "#/components/parameters/PairId"
     get:
       tags: [Pairs]
-      summary: View a pair
+      summary: View a pair (its two players only)
       responses:
         "200":
           description: OK
@@ -528,6 +528,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Pair" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /invites/{token}:
@@ -784,6 +785,11 @@ paths:
     get:
       tags: [Registrations]
       summary: List a category's registrations (paginated, 15/page)
+      description: >-
+        Same visibility as the category itself: for a private competition,
+        needs the caller to already be a participant or to present its
+        invite token with `?invite=<invite_token>` (see "Leer una
+        competición privada" in FRONTEND_HANDOFF.md).
       responses:
         "200":
           description: OK
@@ -791,15 +797,18 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/PaginatedRegistrations" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
     post:
       tags: [Registrations]
       summary: Register a pair or yourself for a category
-      description: >
+      description: >-
         Send `pair_id` for fixed-pair categories (you must be one of the two
         players) or `player_id` for individual_rotating categories (must
         equal your own id) — never both. Rejected if the competition has
         been cancelled, if its registration_closes_at has passed, or if
-        already registered.
+        already registered. For a private competition you aren't a
+        participant of yet, needs its invite token via `?invite=<invite_token>`,
+        same as reading it — otherwise 403.
       requestBody:
         required: true
         content:
@@ -825,6 +834,7 @@ paths:
     get:
       tags: [Registrations]
       summary: View a registration
+      description: As visible as its competition — 403 for a private one you can't view.
       responses:
         "200":
           description: OK
@@ -832,6 +842,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Registration" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [Registrations]

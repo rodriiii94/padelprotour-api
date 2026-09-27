@@ -51,11 +51,19 @@ test('a user can list the pairs they belong to', function () {
     expect(collect($response->json())->pluck('id')->all())->toBe([$ownPair->id]);
 });
 
-test('any authenticated user can view a specific pair', function () {
+test('a player of the pair can view it', function () {
+    $user = User::factory()->create();
+    $pair = Pair::factory()->create(['player1_id' => $user->id]);
+    Sanctum::actingAs($user);
+
+    getJson("/api/pairs/{$pair->id}")->assertOk()->assertJsonFragment(['id' => $pair->id]);
+});
+
+test('someone outside the pair cannot view it', function () {
     $pair = Pair::factory()->create();
     Sanctum::actingAs(User::factory()->create());
 
-    getJson("/api/pairs/{$pair->id}")->assertOk()->assertJsonFragment(['id' => $pair->id]);
+    getJson("/api/pairs/{$pair->id}")->assertForbidden();
 });
 
 test('a user can name their pair when forming it', function () {

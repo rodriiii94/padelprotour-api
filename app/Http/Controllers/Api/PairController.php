@@ -46,8 +46,19 @@ class PairController extends Controller
         return response()->json($pair->load(['player1:id,name', 'player2:id,name']), 201);
     }
 
-    public function show(Pair $pair)
+    /**
+     * Solo sus dos integrantes: nadie más necesita mirar una pareja suelta (en categorías e
+     * inscripciones ya viene embebida). Antes no comprobaba nada, así que se podía consultar
+     * cualquier pareja adivinando su id.
+     */
+    public function show(Request $request, Pair $pair)
     {
+        abort_unless(
+            in_array($request->user()->id, [$pair->player1_id, $pair->player2_id], true),
+            403,
+            'Solo puedes ver una pareja de la que formes parte.'
+        );
+
         return $pair->load(['player1:id,name', 'player2:id,name']);
     }
 }

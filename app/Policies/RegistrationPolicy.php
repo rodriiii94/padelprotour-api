@@ -16,11 +16,15 @@ class RegistrationPolicy
     }
 
     /**
-     * Determine whether the user can view the model.
+     * Una inscripción es tan visible como la competición a la que pertenece: si esta es
+     * privada, hace falta ser participante o presentar su código de invitación, igual que
+     * para ver la categoría o el calendario (ver CompetitionPolicy::view). Antes devolvía
+     * `true` siempre, lo que dejaba leer las inscripciones (parejas, nombres) de cualquier
+     * competición privada sin invitación.
      */
     public function view(User $user, Registration $registration): bool
     {
-        return true;
+        return $user->can('view', $registration->category->competition);
     }
 
     /**
