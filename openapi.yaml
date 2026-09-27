@@ -311,11 +311,13 @@ paths:
       tags: [Me]
       summary: Upload the profile photo
       description: >-
-        multipart/form-data with an `avatar` file (jpg, png or webp, up to 8 MB,
-        at least 64 px on the short side). The server center-crops it to a
-        square, resizes it to 512 px and re-encodes it as JPEG, which drops all
-        metadata (EXIF, GPS). Replaces and deletes the previous photo. Returns
-        the updated user with `avatar_url`.
+        multipart/form-data with an `avatar` file (jpg, png or webp, up to 2 MB,
+        between 64px on the short side and 6 megapixels total — rejected before
+        decoding either way, so an oversized image can't be used to exhaust
+        server memory). The server center-crops it to a square, resizes it to
+        512 px and re-encodes it as JPEG, which drops all metadata (EXIF, GPS)
+        and any non-image bytes appended to the file. Replaces and deletes the
+        previous photo. Returns the updated user with `avatar_url`.
       requestBody:
         required: true
         content:

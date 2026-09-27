@@ -14,8 +14,23 @@ class AvatarController extends Controller
     /** Lado (px) de la foto guardada. */
     private const SIZE = 512;
 
-    /** Tope de píxeles de la imagen original (≈ 25 megapíxeles). */
-    private const MAX_PIXELS = 25_000_000;
+    /**
+     * Tope de píxeles de la imagen original (6 megapíxeles: de sobra para cualquier foto de
+     * perfil real, ya que el resultado final es de 512x512). Antes eran 25 megapíxeles, y
+     * un PNG de un solo color de apenas 83 KB con esas dimensiones agota los 128 MB de
+     * memoria habituales de un proceso PHP (GD necesita ~4 bytes por píxel para
+     * decodificarla): un archivo minúsculo tumbaba la petición con un 500. Con este tope,
+     * el peor caso ronda los 24 MB en la decodificación.
+     */
+    private const MAX_PIXELS = 6_000_000;
+
+    /**
+     * Techo de memoria propio de esta acción, más bajo que el límite del servidor si lo
+     * tiene sin acotar (`memory_limit = -1`): así una imagen que se cuele por debajo del
+     * tope de píxeles falla en un 500 controlado de esta petición, en vez de disputarse la
+     * memoria real del servidor con el resto de procesos PHP.
+     */
+    private const MEMORY_LIMIT = '256M';
 
     /**
      * Sube la foto de perfil. Se recorta al centro en cuadrado, se reduce y se vuelve a
@@ -25,8 +40,10 @@ class AvatarController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'avatar' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+            'avatar' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
+
+        ini_set('memory_limit', self::MEMORY_LIMIT);
 
         $bytes = $request->file('avatar')->get();
 

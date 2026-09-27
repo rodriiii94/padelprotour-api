@@ -95,3 +95,28 @@ test('deleting an account also deletes the photo file', function () {
     Storage::disk('public')->assertMissing($path);
     expect($user->fresh()->avatar_path)->toBeNull();
 });
+
+test('an image over the pixel cap is rejected without ever trying to decode it', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    // Por encima del tope (6 megapíxeles): un PNG de un solo color a este tamaño pesa muy
+    // poco en disco pero, si se llegara a decodificar, exigiría decenas de MB de memoria.
+    // Antes el tope era de 25 megapíxeles y una imagen así (aun por debajo de ese límite
+    // más alto) tumbaba la petición con un 500 por agotar la memoria del proceso PHP.
+    post('/api/me/avatar', ['avatar' => UploadedFile::fake()->image('bomba.png', 4000, 3000)], ['Accept' => 'application/json'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('avatar');
+
+    expect($user->fresh()->avatar_path)->toBeNull();
+});
+
+test('an image just under the pixel cap is still accepted', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    post('/api/me/avatar', ['avatar' => UploadedFile::fake()->image('grande.png', 2400, 2400)], ['Accept' => 'application/json'])
+        ->assertOk();
+
+    expect($user->fresh()->avatar_path)->not->toBeNull();
+});
