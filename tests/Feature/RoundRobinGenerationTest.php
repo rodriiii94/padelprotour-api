@@ -125,6 +125,48 @@ test('an odd number of pairs gets an automatic bye each matchday', function () {
     }
 });
 
+test('a double round league plays every matchup twice, with sides swapped on the return leg', function () {
+    $organizer = User::factory()->create();
+    $competition = Competition::factory()->create(['organizer_id' => $organizer->id, 'type' => 'league', 'double_round' => true]);
+    $category = Category::factory()->create(['competition_id' => $competition->id, 'registration_mode' => null]);
+    $pairs = collect(range(1, 4))->map(fn () => confirmedPairRegistration($category));
+    Sanctum::actingAs($organizer);
+
+    postJson("/api/categories/{$category->id}/round-robin")->assertCreated();
+
+    // 3 jornadas de ida + 3 de vuelta.
+    expect(Phase::where('category_id', $category->id)->where('type', 'matchday')->count())->toBe(6);
+
+    $matches = PadelMatch::whereIn('phase_id', Phase::where('category_id', $category->id)->pluck('id'))->get();
+    expect($matches)->toHaveCount(12);
+
+    $matchup = fn (PadelMatch $match) => collect([
+        $pairs->first(fn (Pair $pair) => $pair->player1_id === $match->side1_player1_id)->id,
+        $pairs->first(fn (Pair $pair) => $pair->player1_id === $match->side2_player1_id)->id,
+    ])->sort()->values()->implode('-');
+
+    // Cada cruce (sin ordenar por lado) aparece exactamente dos veces: ida y vuelta.
+    expect($matches->map($matchup)->countBy())->each->toBe(2);
+
+    // En la vuelta, quien jugó de lado 1 en la ida pasa a jugar de lado 2.
+    $idaSide1 = PadelMatch::whereIn('phase_id', Phase::where('category_id', $category->id)->where('order', '<=', 3)->pluck('id'))
+        ->pluck('side1_player1_id')->sort()->values();
+    $vueltaSide2 = PadelMatch::whereIn('phase_id', Phase::where('category_id', $category->id)->where('order', '>', 3)->pluck('id'))
+        ->pluck('side2_player1_id')->sort()->values();
+    expect($idaSide1->all())->toBe($vueltaSide2->all());
+});
+
+test('a single round league (double_round false, the default) only plays every matchup once', function () {
+    $organizer = User::factory()->create();
+    $category = leagueCategory($organizer);
+    collect(range(1, 4))->each(fn () => confirmedPairRegistration($category));
+    Sanctum::actingAs($organizer);
+
+    postJson("/api/categories/{$category->id}/round-robin")->assertCreated();
+
+    expect(Phase::where('category_id', $category->id)->where('type', 'matchday')->count())->toBe(3);
+});
+
 test('generating a round robin twice for the same category is rejected', function () {
     $organizer = User::factory()->create();
     $category = leagueCategory($organizer);

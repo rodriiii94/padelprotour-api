@@ -40,16 +40,23 @@ class Phase extends Model
      * número de parejas es impar se añade un "bye": esa pareja descansa
      * esa jornada y no se crea partido para ella.
      *
+     * Con `$doubleRound` (ida y vuelta), tras las jornadas de ida se repiten con los mismos
+     * cruces pero los lados intercambiados, numeradas a continuación de las de ida.
+     *
      * @param  array<int, int>  $pairIds
      * @return Collection<int, Phase>
      */
-    public static function generateRoundRobinForCategory(Category $category, array $pairIds): Collection
+    public static function generateRoundRobinForCategory(Category $category, array $pairIds, bool $doubleRound = false): Collection
     {
         $pairs = Pair::whereIn('id', $pairIds)->get()->keyBy('id');
         $rounds = self::roundRobinRounds($pairIds);
 
-        return DB::transaction(function () use ($category, $rounds, $pairs) {
-            return collect($rounds)->values()->map(function (array $roundPairings, int $index) use ($category, $pairs) {
+        $legs = $doubleRound
+            ? collect($rounds)->concat(collect($rounds)->map(fn (array $round) => array_map(fn (array $pairing) => array_reverse($pairing), $round)))
+            : collect($rounds);
+
+        return DB::transaction(function () use ($category, $legs, $pairs) {
+            return $legs->values()->map(function (array $roundPairings, int $index) use ($category, $pairs) {
                 $phase = $category->phases()->create([
                     'type' => 'matchday',
                     'name' => 'Jornada '.($index + 1),

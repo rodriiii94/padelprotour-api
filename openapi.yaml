@@ -944,10 +944,13 @@ paths:
         Fixed-pair league categories only. Creates one `matchday` phase per
         round (circle method) from the category's confirmed pair
         registrations, so every pair faces every other pair exactly once.
-        An odd number of pairs gets an automatic bye each round. Fails if
-        the competition isn't a league, the category isn't fixed-pair,
-        there are fewer than 2 confirmed pairs, or matchday phases already
-        exist for this category.
+        An odd number of pairs gets an automatic bye each round. If the
+        competition has `double_round` (ida y vuelta), the same rounds
+        repeat with sides swapped right after the first leg, doubling the
+        number of phases and matches. Fails if the competition isn't a
+        league, the category isn't fixed-pair, there are fewer than 2
+        confirmed pairs, or matchday phases already exist for this
+        category.
       responses:
         "201":
           description: Created
@@ -1719,6 +1722,15 @@ components:
           type: boolean
           default: false
           description: Private competitions are excluded from GET /competitions and require an invite link (or being the organizer/a participant) to view.
+        double_round:
+          type: boolean
+          default: false
+          description: >-
+            League only ("ida y vuelta"); silently forced to false for
+            tournaments regardless of what is sent. When true, POST
+            /categories/{category}/round-robin schedules every pair against
+            each other twice — a return leg with sides swapped follows the
+            same number of matchdays.
 
     Competition:
       allOf:

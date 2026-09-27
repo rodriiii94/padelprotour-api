@@ -38,7 +38,7 @@ class RoundRobinController extends Controller
 
         abort_if(count($pairIds) < 2, 422, 'Hacen falta al menos 2 parejas confirmadas para generar el calendario.');
 
-        $phases = Phase::generateRoundRobinForCategory($category, $pairIds);
+        $phases = Phase::generateRoundRobinForCategory($category, $pairIds, $category->competition->double_round);
 
         return response()->json($phases, 201);
     }

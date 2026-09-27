@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['type', 'name', 'venue', 'start_date', 'end_date', 'organizer_id', 'registration_closes_at', 'is_private', 'invite_token'])]
+#[Fillable(['type', 'name', 'venue', 'start_date', 'end_date', 'organizer_id', 'registration_closes_at', 'is_private', 'invite_token', 'double_round'])]
 #[Hidden(['invite_token'])]
 class Competition extends Model
 {
@@ -31,6 +31,7 @@ class Competition extends Model
             'end_date' => 'date',
             'registration_closes_at' => 'datetime',
             'is_private' => 'boolean',
+            'double_round' => 'boolean',
             'cancelled_at' => 'datetime',
         ];
     }

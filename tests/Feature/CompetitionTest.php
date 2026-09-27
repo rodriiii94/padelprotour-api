@@ -148,3 +148,41 @@ test('a competition cannot be cancelled twice', function () {
 
     postJson("/api/competitions/{$competition->id}/cancel")->assertUnprocessable();
 });
+
+test('a league can be created with double_round (ida y vuelta) enabled', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    $response = postJson('/api/competitions', [
+        'type' => 'league',
+        'name' => 'Liga Ida y Vuelta',
+        'double_round' => true,
+    ])->assertCreated();
+
+    expect($response->json('double_round'))->toBeTrue();
+    $this->assertDatabaseHas('competitions', ['name' => 'Liga Ida y Vuelta', 'double_round' => true]);
+});
+
+test('double_round defaults to false and is ignored for tournaments', function () {
+    Sanctum::actingAs(User::factory()->create());
+
+    $league = postJson('/api/competitions', ['type' => 'league', 'name' => 'Liga Normal'])->assertCreated();
+    expect($league->json('double_round'))->toBeFalse();
+
+    $tournament = postJson('/api/competitions', [
+        'type' => 'tournament', 'name' => 'Torneo', 'double_round' => true,
+    ])->assertCreated();
+    expect($tournament->json('double_round'))->toBeFalse();
+});
+
+test('the organizer can turn double_round on or off from a league they already created', function () {
+    $organizer = User::factory()->create();
+    $competition = Competition::factory()->create(['organizer_id' => $organizer->id, 'type' => 'league', 'double_round' => false]);
+    Sanctum::actingAs($organizer);
+
+    putJson("/api/competitions/{$competition->id}", ['double_round' => true])
+        ->assertOk()->assertJsonPath('double_round', true);
+
+    // Cambiarla a torneo apaga ida y vuelta, aunque se pida mantenerla.
+    putJson("/api/competitions/{$competition->id}", ['type' => 'tournament', 'double_round' => true])
+        ->assertOk()->assertJsonPath('double_round', false);
+});

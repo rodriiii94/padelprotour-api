@@ -38,7 +38,12 @@ class CompetitionController extends Controller
             'venue' => ['nullable', 'string', 'max:255'],
             ...$this->dateRules($request),
             'is_private' => ['sometimes', 'boolean'],
+            'double_round' => ['sometimes', 'boolean'],
         ]);
+
+        // Ida y vuelta solo tiene sentido en una liga; en un torneo se ignora. Se fija aquí
+        // (no solo con el default de la columna) para que ya salga en la respuesta.
+        $validated['double_round'] = $validated['type'] === 'league' && ($validated['double_round'] ?? false);
 
         $competition = Competition::create([
             ...$validated,
@@ -66,7 +71,13 @@ class CompetitionController extends Controller
             'venue' => ['nullable', 'string', 'max:255'],
             ...$this->dateRules($request),
             'is_private' => ['sometimes', 'boolean'],
+            'double_round' => ['sometimes', 'boolean'],
         ]);
+
+        // Ida y vuelta solo tiene sentido en una liga; en un torneo se ignora.
+        if (($validated['type'] ?? $competition->type) !== 'league') {
+            $validated['double_round'] = false;
+        }
 
         $competition->update($validated);
 

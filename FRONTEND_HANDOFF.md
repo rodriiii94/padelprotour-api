@@ -255,3 +255,12 @@ Los cuatro jugadores y el organizador pueden hablar para concretar día, hora y 
 `DELETE /match-messages/{id}` (su autor o el organizador). 403 para quien no participe. No hay
 tiempo real: la app consulta cada pocos segundos mientras la pantalla está abierta. Al eliminar
 una cuenta se borran sus mensajes.
+
+## 15. Liga ida y vuelta
+
+`double_round` en `POST/PUT /competitions`: solo tiene efecto en ligas (`type: league`); en
+torneos se ignora y queda en `false` aunque se envíe `true`. Con él activo,
+`POST /categories/{id}/round-robin` genera el doble de jornadas: primero la ida (cada pareja
+contra todas las demás una vez) y a continuación la vuelta, mismos cruces con los lados
+intercambiados. Se decide al crear (o editar) la competición, antes de generar el calendario;
+cambiarlo después de generado no reordena nada ya creado.
