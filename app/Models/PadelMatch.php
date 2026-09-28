@@ -110,4 +110,23 @@ class PadelMatch extends Model
             default => null,
         };
     }
+
+    /**
+     * El partido con sus 4 jugadores en su resumen público (con avatar) en vez del resumen
+     * mínimo (id, name) de la serialización por defecto -- para que el calendario pueda
+     * mostrar la foto de perfil junto a cada nombre. Los 4 jugadores deben venir ya
+     * cargados con las columnas de `User::SEARCH_COLUMNS` + `avatar_path`.
+     *
+     * @return array<string, mixed>
+     */
+    public function withPublicPlayers(): array
+    {
+        return [
+            ...$this->toArray(),
+            'side1_player1' => $this->side1Player1?->publicSummary(),
+            'side1_player2' => $this->side1Player2?->publicSummary(),
+            'side2_player1' => $this->side2Player1?->publicSummary(),
+            'side2_player2' => $this->side2Player2?->publicSummary(),
+        ];
+    }
 }

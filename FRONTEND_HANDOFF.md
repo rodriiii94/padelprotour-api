@@ -16,6 +16,12 @@ había (los IDs se mantienen, no se han quitado):
 - `Registration.player` (si `player_id` no es null) / `Registration.pair` (si
   `pair_id` no es null, con `pair.player1`/`pair.player2` ya resueltos dentro)
 - `Match.side1_player1` / `side1_player2` / `side2_player1` / `side2_player2`
+  — este va más allá de `{ id, name }`: trae el mismo resumen que
+  `PublicUserSummary` (`level`, `club`, `city`, `avatar_color`, `avatar_emoji`,
+  `avatar_url`), para poder mostrar la foto de perfil junto al nombre en el
+  calendario. Se embebe igual en `GET /phases/{phase}/matches`,
+  `GET /matches/{match}`, `POST /categories/{category}/round-robin` y las
+  respuestas de `POST /matches/{match}/result-proposal(/confirm|/reject)`.
 
 **Qué hacer:** si tenéis algún workaround para resolver nombres a partir de
 IDs (llamadas a `searchUsers()`, caché local, "Jugador #12"...), podéis

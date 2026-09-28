@@ -105,8 +105,8 @@ test('the generated schedule embeds player names for each match', function () {
 
     $phases = postJson("/api/categories/{$category->id}/round-robin")->assertCreated()->json();
 
-    expect($phases[0]['matches'][0]['side1_player1'])->toHaveKeys(['id', 'name'])
-        ->and($phases[0]['matches'][0]['side2_player2'])->toHaveKeys(['id', 'name']);
+    expect($phases[0]['matches'][0]['side1_player1'])->toHaveKeys(['id', 'name', 'avatar_url', 'avatar_color', 'avatar_emoji'])
+        ->and($phases[0]['matches'][0]['side2_player2'])->toHaveKeys(['id', 'name', 'avatar_url', 'avatar_color', 'avatar_emoji']);
 });
 
 test('an odd number of pairs gets an automatic bye each matchday', function () {

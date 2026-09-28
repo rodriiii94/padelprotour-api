@@ -82,12 +82,13 @@ test('completing a match requires a winner side', function () {
         ->assertJsonFragment(['status' => 'completed', 'winner_side' => 1]);
 });
 
-test('viewing a match embeds all four players', function () {
+test('viewing a match embeds all four players with their public profile, avatar included', function () {
     $organizer = User::factory()->create();
     $competition = Competition::factory()->create(['organizer_id' => $organizer->id]);
     $category = Category::factory()->create(['competition_id' => $competition->id]);
     $phase = Phase::factory()->create(['category_id' => $category->id]);
     $players = User::factory()->count(4)->create();
+    $players[0]->forceFill(['avatar_color' => 'lime', 'avatar_emoji' => '🎾'])->save();
     $match = PadelMatch::factory()->create([
         'phase_id' => $phase->id,
         'side1_player1_id' => $players[0]->id,
@@ -100,9 +101,32 @@ test('viewing a match embeds all four players', function () {
     $json = getJson("/api/matches/{$match->id}")->assertOk()->json();
 
     expect($json['side1_player1']['id'])->toBe($players[0]->id)
+        ->and($json['side1_player1']['avatar_color'])->toBe('lime')
+        ->and($json['side1_player1']['avatar_emoji'])->toBe('🎾')
+        ->and($json['side1_player1'])->toHaveKey('avatar_url')
         ->and($json['side1_player2']['id'])->toBe($players[1]->id)
         ->and($json['side2_player1']['id'])->toBe($players[2]->id)
         ->and($json['side2_player2']['id'])->toBe($players[3]->id);
+});
+
+test('listing a phase\'s matches also embeds the players\' avatar', function () {
+    $organizer = User::factory()->create();
+    $competition = Competition::factory()->create(['organizer_id' => $organizer->id]);
+    $category = Category::factory()->create(['competition_id' => $competition->id]);
+    $phase = Phase::factory()->create(['category_id' => $category->id]);
+    $players = User::factory()->count(4)->create();
+    PadelMatch::factory()->create([
+        'phase_id' => $phase->id,
+        'side1_player1_id' => $players[0]->id,
+        'side1_player2_id' => $players[1]->id,
+        'side2_player1_id' => $players[2]->id,
+        'side2_player2_id' => $players[3]->id,
+    ]);
+    Sanctum::actingAs($organizer);
+
+    $json = getJson("/api/phases/{$phase->id}/matches")->assertOk()->json();
+
+    expect($json['data'][0]['side1_player1'])->toHaveKeys(['id', 'name', 'avatar_url', 'avatar_color', 'avatar_emoji']);
 });
 
 test('completing a match recalculates the category ranking automatically', function () {

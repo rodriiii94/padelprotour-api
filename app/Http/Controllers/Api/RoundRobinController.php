@@ -40,6 +40,12 @@ class RoundRobinController extends Controller
 
         $phases = Phase::generateRoundRobinForCategory($category, $pairIds, $category->competition->double_round);
 
-        return response()->json($phases, 201);
+        return response()->json(
+            $phases->map(fn (Phase $phase) => [
+                ...$phase->toArray(),
+                'matches' => $phase->matches->map->withPublicPlayers(),
+            ]),
+            201,
+        );
     }
 }

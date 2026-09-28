@@ -80,11 +80,13 @@ class Phase extends Model
                     ]);
                 }
 
+                $playerColumns = implode(',', [...User::SEARCH_COLUMNS, 'avatar_path']);
+
                 return $phase->load([
-                    'matches.side1Player1:id,name',
-                    'matches.side1Player2:id,name',
-                    'matches.side2Player1:id,name',
-                    'matches.side2Player2:id,name',
+                    "matches.side1Player1:{$playerColumns}",
+                    "matches.side1Player2:{$playerColumns}",
+                    "matches.side2Player1:{$playerColumns}",
+                    "matches.side2Player2:{$playerColumns}",
                 ]);
             });
         });

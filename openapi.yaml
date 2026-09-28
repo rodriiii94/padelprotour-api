@@ -1710,7 +1710,7 @@ components:
 
     UserSummary:
       type: object
-      description: Minimal player data embedded in Pair/Registration/Match responses so clients don't have to resolve ids separately.
+      description: Minimal player data embedded in Pair/Registration responses so clients don't have to resolve ids separately. Match embeds the richer PublicUserSummary instead (avatar included, for the calendar UI).
       properties:
         id: { type: integer }
         name: { type: string }
@@ -1881,11 +1881,11 @@ components:
             result_proposed_by: { type: integer, nullable: true, description: "Player who proposed the result while status is pending_validation; null otherwise." }
             result_proposed_at: { type: string, format: date-time, nullable: true, description: "When the result was proposed. 48 hours later, if nobody confirmed or rejected it, it is confirmed automatically (hourly job)." }
             side1_player1:
-              allOf: [{ $ref: "#/components/schemas/UserSummary" }]
-              description: Present on GET /phases/{phase}/matches, GET /matches/{match}, and the Phase.matches embedded in round-robin generation — not on the POST/PUT responses.
-            side1_player2: { $ref: "#/components/schemas/UserSummary" }
-            side2_player1: { $ref: "#/components/schemas/UserSummary" }
-            side2_player2: { $ref: "#/components/schemas/UserSummary" }
+              allOf: [{ $ref: "#/components/schemas/PublicUserSummary" }]
+              description: Present on GET /phases/{phase}/matches, GET /matches/{match}, the Phase.matches embedded in round-robin generation, and the result-proposal responses — not on the POST/PUT responses.
+            side1_player2: { $ref: "#/components/schemas/PublicUserSummary" }
+            side2_player1: { $ref: "#/components/schemas/PublicUserSummary" }
+            side2_player2: { $ref: "#/components/schemas/PublicUserSummary" }
             created_at: { type: string, format: date-time }
             updated_at: { type: string, format: date-time }
             match_sets:

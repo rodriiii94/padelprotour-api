@@ -6,18 +6,23 @@ use App\Http\Controllers\Controller;
 use App\Models\PadelMatch;
 use App\Models\Phase;
 use App\Models\Ranking;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class MatchController extends Controller
 {
+    /** Columnas que necesita User::publicSummary() para mostrar avatar junto al nombre. */
+    private const PLAYER_COLUMNS = [...User::SEARCH_COLUMNS, 'avatar_path'];
+
     public function index(Phase $phase)
     {
         $this->authorize('view', $phase->category->competition);
 
         return $phase->matches()
-            ->with(['side1Player1:id,name', 'side1Player2:id,name', 'side2Player1:id,name', 'side2Player2:id,name'])
+            ->with($this->playerRelations())
             ->orderBy('scheduled_at')
-            ->paginate(15);
+            ->paginate(15)
+            ->through(fn (PadelMatch $match) => $match->withPublicPlayers());
     }
 
     public function store(Request $request, Phase $phase)
@@ -45,13 +50,7 @@ class MatchController extends Controller
     {
         $this->authorize('view', $match->phase->category->competition);
 
-        return $match->load([
-            'matchSets',
-            'side1Player1:id,name',
-            'side1Player2:id,name',
-            'side2Player1:id,name',
-            'side2Player2:id,name',
-        ]);
+        return $match->load(['matchSets', ...$this->playerRelations()])->withPublicPlayers();
     }
 
     public function update(Request $request, PadelMatch $match)
@@ -84,5 +83,18 @@ class MatchController extends Controller
         $match->delete();
 
         return response()->noContent();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function playerRelations(): array
+    {
+        $columns = implode(',', self::PLAYER_COLUMNS);
+
+        return array_map(
+            fn (string $relation) => "{$relation}:{$columns}",
+            ['side1Player1', 'side1Player2', 'side2Player1', 'side2Player2'],
+        );
     }
 }

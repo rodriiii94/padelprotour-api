@@ -146,14 +146,19 @@ class MatchResultController extends Controller
         return $won[1] >= 2 ? 1 : 2;
     }
 
-    private function present(PadelMatch $match): PadelMatch
+    /**
+     * @return array<string, mixed>
+     */
+    private function present(PadelMatch $match): array
     {
+        $columns = implode(',', [...User::SEARCH_COLUMNS, 'avatar_path']);
+
         return $match->refresh()->load([
             'matchSets',
-            'side1Player1:id,name',
-            'side1Player2:id,name',
-            'side2Player1:id,name',
-            'side2Player2:id,name',
-        ]);
+            "side1Player1:{$columns}",
+            "side1Player2:{$columns}",
+            "side2Player1:{$columns}",
+            "side2Player2:{$columns}",
+        ])->withPublicPlayers();
     }
 }
