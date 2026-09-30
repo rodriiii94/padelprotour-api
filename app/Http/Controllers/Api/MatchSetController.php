@@ -18,7 +18,7 @@ class MatchSetController extends Controller
 
     public function store(Request $request, PadelMatch $match)
     {
-        $this->authorize('update', $match->phase->category->competition);
+        $this->authorize('recordResult', $match);
 
         $validated = $request->validate([
             'set_number' => ['required', 'integer', 'between:1,3'],
@@ -58,7 +58,7 @@ class MatchSetController extends Controller
 
     public function update(Request $request, MatchSet $set)
     {
-        $this->authorize('update', $set->match->phase->category->competition);
+        $this->authorize('recordResult', $set->match);
 
         $validated = $request->validate([
             'side1_games' => ['sometimes', 'integer', 'min:0'],
@@ -81,7 +81,7 @@ class MatchSetController extends Controller
 
     public function destroy(MatchSet $set)
     {
-        $this->authorize('delete', $set->match->phase->category->competition);
+        $this->authorize('recordResult', $set->match);
 
         $set->delete();
 

@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\PadelMatch;
 use App\Models\User;
+use Illuminate\Auth\Access\Response;
 
 class PadelMatchPolicy
 {
@@ -33,5 +34,21 @@ class PadelMatchPolicy
     public function book(User $user, PadelMatch $match): bool
     {
         return $this->chat($user, $match);
+    }
+
+    /**
+     * Anotar sets y finalizar el partido sin confirmación de nadie: solo el organizador, y
+     * solo si no juega este partido. Si juega, es parte interesada y va por el flujo de
+     * propuesta que confirma un rival, como cualquier otro jugador.
+     */
+    public function recordResult(User $user, PadelMatch $match): Response
+    {
+        if ($user->id !== $match->phase->category->competition->organizer_id) {
+            return Response::deny('Solo el organizador puede anotar el resultado directamente.');
+        }
+
+        return $match->sideOf($user) === null
+            ? Response::allow()
+            : Response::deny('Juegas este partido: propón el resultado y que lo confirme un rival.');
     }
 }

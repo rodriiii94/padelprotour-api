@@ -65,7 +65,7 @@ test('a non organizer cannot schedule a match', function () {
     ])->assertForbidden();
 });
 
-test('completing a match requires a winner side', function () {
+test('a match can only be completed once a side has won two sets, and the winner comes from the sets', function () {
     $organizer = User::factory()->create();
     $competition = Competition::factory()->create(['organizer_id' => $organizer->id]);
     $category = Category::factory()->create(['competition_id' => $competition->id]);
@@ -73,13 +73,41 @@ test('completing a match requires a winner side', function () {
     $match = PadelMatch::factory()->create(['phase_id' => $phase->id]);
     Sanctum::actingAs($organizer);
 
-    putJson("/api/matches/{$match->id}", ['status' => 'completed'])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['winner_side']);
+    putJson("/api/matches/{$match->id}", ['status' => 'completed', 'winner_side' => 2])
+        ->assertUnprocessable()->assertJsonValidationErrors(['status']);
 
+    $match->matchSets()->create(['set_number' => 1, 'side1_games' => 2, 'side2_games' => 6]);
+    putJson("/api/matches/{$match->id}", ['status' => 'completed', 'winner_side' => 2])
+        ->assertUnprocessable()->assertJsonValidationErrors(['status']);
+
+    $match->matchSets()->create(['set_number' => 2, 'side1_games' => 4, 'side2_games' => 6]);
     putJson("/api/matches/{$match->id}", ['status' => 'completed', 'winner_side' => 1])
+        ->assertUnprocessable()->assertJsonValidationErrors(['winner_side']);
+
+    putJson("/api/matches/{$match->id}", ['status' => 'completed'])
         ->assertOk()
-        ->assertJsonFragment(['status' => 'completed', 'winner_side' => 1]);
+        ->assertJsonFragment(['status' => 'completed', 'winner_side' => 2]);
+});
+
+test('an organizer who plays the match cannot record its result directly', function () {
+    $organizer = User::factory()->create();
+    $competition = Competition::factory()->create(['organizer_id' => $organizer->id]);
+    $category = Category::factory()->create(['competition_id' => $competition->id]);
+    $phase = Phase::factory()->create(['category_id' => $category->id]);
+    $match = PadelMatch::factory()->create(['phase_id' => $phase->id, 'side1_player1_id' => $organizer->id]);
+    $set = $match->matchSets()->create(['set_number' => 1, 'side1_games' => 6, 'side2_games' => 2]);
+    Sanctum::actingAs($organizer);
+
+    postJson("/api/matches/{$match->id}/sets", ['set_number' => 2, 'side1_games' => 6, 'side2_games' => 3])
+        ->assertForbidden()
+        ->assertJsonFragment(['message' => 'Juegas este partido: propón el resultado y que lo confirme un rival.']);
+    putJson("/api/sets/{$set->id}", ['side1_games' => 6, 'side2_games' => 0])->assertForbidden();
+    putJson("/api/matches/{$match->id}", ['status' => 'completed'])->assertForbidden();
+
+    putJson("/api/matches/{$match->id}", ['court' => 'Pista 4'])->assertOk();
+
+    expect($match->fresh())->status->toBe('scheduled')->court->toBe('Pista 4')
+        ->and($match->matchSets()->count())->toBe(1);
 });
 
 test('viewing a match embeds all four players with their public profile, avatar included', function () {
@@ -148,6 +176,10 @@ test('completing a match recalculates the category ranking automatically', funct
 
     expect(Ranking::where('category_id', $category->id)->count())->toBe(0);
 
+    $match->matchSets()->createMany([
+        ['set_number' => 1, 'side1_games' => 6, 'side2_games' => 3],
+        ['set_number' => 2, 'side1_games' => 6, 'side2_games' => 4],
+    ]);
     putJson("/api/matches/{$match->id}", ['status' => 'completed', 'winner_side' => 1])->assertOk();
 
     $rankings = Ranking::where('category_id', $category->id)->orderBy('position')->get();

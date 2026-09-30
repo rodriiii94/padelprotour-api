@@ -62,7 +62,10 @@ class MatchResultController extends Controller
     {
         abort_unless($match->status === 'pending_validation', 422, 'No hay ningún resultado pendiente de validar.');
 
-        $isOrganizer = $user->id === $match->phase->category->competition->organizer_id;
+        // Si el organizador juega el partido, cuenta solo como jugador: no puede validar como
+        // organizador la propuesta de su propio compañero.
+        $isOrganizer = $user->id === $match->phase->category->competition->organizer_id
+            && $match->sideOf($user) === null;
         $proposer = User::find($match->result_proposed_by);
         $proposerSide = $proposer ? $match->sideOf($proposer) : null;
         $userSide = $match->sideOf($user);

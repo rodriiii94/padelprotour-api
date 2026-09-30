@@ -17,7 +17,7 @@ test('a search term is required', function () {
 });
 
 test('users can be found by partial name, ignoring case', function () {
-    Sanctum::actingAs(User::factory()->create());
+    Sanctum::actingAs(User::factory()->create(['name' => 'Luis Pérez']));
 
     $anaMartinez = User::factory()->create(['name' => 'Ana Martínez']);
     $juanAnaya = User::factory()->create(['name' => 'Juan Anaya']);

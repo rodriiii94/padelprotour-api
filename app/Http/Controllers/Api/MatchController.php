@@ -8,6 +8,7 @@ use App\Models\Phase;
 use App\Models\Ranking;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class MatchController extends Controller
 {
@@ -61,8 +62,27 @@ class MatchController extends Controller
             'scheduled_at' => ['nullable', 'date'],
             'court' => ['nullable', 'string', 'max:255'],
             'status' => ['sometimes', 'string', 'in:scheduled,in_progress,pending_validation,completed'],
-            'winner_side' => ['nullable', 'integer', 'in:1,2', 'required_if:status,completed'],
+            'winner_side' => ['nullable', 'integer', 'in:1,2'],
         ]);
+
+        if ($request->hasAny(['status', 'winner_side'])) {
+            $this->authorize('recordResult', $match);
+        }
+
+        // El ganador sale de los sets anotados, no de lo que diga el cliente: un partido
+        // sin decidir (p. ej. un solo set) no se puede dar por terminado.
+        if (($validated['status'] ?? null) === 'completed') {
+            $match->load('matchSets');
+            throw_unless($match->isDecided(), ValidationException::withMessages([
+                'status' => ['El partido no está decidido: un lado debe ganar 2 sets antes de finalizarlo.'],
+            ]));
+
+            $winnerSide = $match->setsWon(1) >= 2 ? 1 : 2;
+            throw_if(isset($validated['winner_side']) && $validated['winner_side'] !== $winnerSide, ValidationException::withMessages([
+                'winner_side' => ['El ganador no coincide con los sets anotados.'],
+            ]));
+            $validated['winner_side'] = $winnerSide;
+        }
 
         $match->update($validated);
 

@@ -109,6 +109,22 @@ test('the proposer and their partner cannot confirm their own result, but the or
     postJson("/api/matches/{$match->id}/result-proposal/confirm")->assertOk()->assertJsonPath('status', 'completed');
 });
 
+test('an organizer who plays the match proposes like any player and cannot confirm their partner\'s result', function () {
+    ['match' => $match, 'a1' => $a1, 'b1' => $b1] = scheduledMatch();
+    $organizerPlayer = User::factory()->create();
+    $match->phase->category->competition->update(['organizer_id' => $organizerPlayer->id]);
+    $match->update(['side1_player2_id' => $organizerPlayer->id]);
+
+    Sanctum::actingAs($a1);
+    postJson("/api/matches/{$match->id}/result-proposal", wonInTwoSets())->assertCreated();
+
+    Sanctum::actingAs($organizerPlayer);
+    postJson("/api/matches/{$match->id}/result-proposal/confirm")->assertForbidden();
+
+    Sanctum::actingAs($b1);
+    postJson("/api/matches/{$match->id}/result-proposal/confirm")->assertOk()->assertJsonPath('status', 'completed');
+});
+
 test('a rival rejecting the result clears it, and the proposer can withdraw it', function () {
     ['match' => $match, 'a1' => $a1, 'b1' => $b1] = scheduledMatch();
 
