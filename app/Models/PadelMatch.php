@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'side2_player2_id',
     'scheduled_at',
     'court',
+    'club',
+    'playtomic_url',
     'status',
     'winner_side',
 ])]

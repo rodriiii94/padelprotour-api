@@ -491,6 +491,21 @@ paths:
                 items: { $ref: "#/components/schemas/Competition" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  /me/clubs:
+    get:
+      tags: [Me]
+      summary: Clubs of my matches (booking suggestions)
+      description: Distinct clubs of the matches I play in, most recently used first, up to 10.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /pairs:
     get:
       tags: [Pairs]
@@ -1129,6 +1144,46 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /matches/{match}/booking:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    put:
+      tags: [Matches]
+      summary: Link the court booking (four players or the organizer)
+      description: >-
+        Day/time, club, court and the Playtomic link of the match. Playtomic has no
+        public API, so the data is entered by hand; the link is only for opening the
+        match in Playtomic. Send null to clear a field. scheduled_at is stored in UTC.
+        422 when the competition is cancelled.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scheduled_at: { type: string, format: date-time, nullable: true }
+                club: { type: string, maxLength: 120, nullable: true }
+                court: { type: string, maxLength: 255, nullable: true }
+                playtomic_url: { type: string, maxLength: 255, nullable: true, description: "https URL on playtomic.com / playtomic.io or a subdomain." }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  scheduled_at: { type: string, format: date-time, nullable: true }
+                  club: { type: string, nullable: true }
+                  court: { type: string, nullable: true }
+                  playtomic_url: { type: string, nullable: true }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
 
   /matches/{match}/result-proposal:
     parameters:
@@ -1879,6 +1934,8 @@ components:
             status: { $ref: "#/components/schemas/MatchStatus" }
             winner_side: { type: integer, enum: [1, 2], nullable: true }
             result_proposed_by: { type: integer, nullable: true, description: "Player who proposed the result while status is pending_validation; null otherwise." }
+            club: { type: string, nullable: true, description: "Club where the court is booked. Set via PUT /matches/{match}/booking." }
+            playtomic_url: { type: string, nullable: true, description: "https link to the match in Playtomic (only opened, never fetched). Set via PUT /matches/{match}/booking." }
             result_proposed_at: { type: string, format: date-time, nullable: true, description: "When the result was proposed. 48 hours later, if nobody confirmed or rejected it, it is confirmed automatically (hourly job)." }
             side1_player1:
               allOf: [{ $ref: "#/components/schemas/PublicUserSummary" }]

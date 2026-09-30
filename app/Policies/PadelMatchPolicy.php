@@ -16,4 +16,13 @@ class PadelMatchPolicy
         return $match->sideOf($user) !== null
             || $user->id === $match->phase->category->competition->organizer_id;
     }
+
+    /**
+     * Apuntar la reserva de pista (club, día/hora, enlace de Playtomic): quien reserva suele
+     * ser uno de los jugadores, así que pueden los mismos que en el chat.
+     */
+    public function book(User $user, PadelMatch $match): bool
+    {
+        return $this->chat($user, $match);
+    }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ChatMessageController;
 use App\Http\Controllers\Api\CompetitionController;
 use App\Http\Controllers\Api\InviteController;
+use App\Http\Controllers\Api\MatchBookingController;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MatchdayPairingController;
 use App\Http\Controllers\Api\MatchMessageController;
@@ -38,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me/registrations', [MeController::class, 'registrations']);
     Route::get('/me/competitions', [MeController::class, 'competitions']);
+    Route::get('/me/clubs', [MeController::class, 'clubs']);
 
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/users/{user}', [UserController::class, 'show']);
@@ -67,6 +69,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/matches/{match}/messages', [MatchMessageController::class, 'index']);
     Route::post('/matches/{match}/messages', [MatchMessageController::class, 'store'])->middleware('throttle:60,1');
     Route::delete('/match-messages/{message}', [MatchMessageController::class, 'destroy']);
+    Route::put('/matches/{match}/booking', [MatchBookingController::class, 'update']);
     Route::post('/matches/{match}/result-proposal', [MatchResultController::class, 'propose']);
     Route::post('/matches/{match}/result-proposal/confirm', [MatchResultController::class, 'confirm']);
     Route::post('/matches/{match}/result-proposal/reject', [MatchResultController::class, 'reject']);

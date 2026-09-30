@@ -275,3 +275,13 @@ torneos se ignora y queda en `false` aunque se envíe `true`. Con él activo,
 contra todas las demás una vez) y a continuación la vuelta, mismos cruces con los lados
 intercambiados. Se decide al crear (o editar) la competición, antes de generar el calendario;
 cambiarlo después de generado no reordena nada ya creado.
+
+## 16. Reserva de pista (Playtomic)
+
+`PUT /matches/{id}/booking` con `scheduled_at`, `club`, `court` y `playtomic_url` (todos
+opcionales; `null` los borra). Pueden los cuatro jugadores y el organizador; 422 si la
+competición está cancelada. Playtomic no tiene API pública: los datos se apuntan a mano y el
+enlace (solo `https` de `playtomic.com`/`playtomic.io`) sirve para abrir el partido en
+Playtomic. `club` y `playtomic_url` vienen también en `GET /matches/{id}` y en el listado de
+partidos de una fase. `GET /me/clubs` devuelve hasta 10 clubes donde ya ha jugado el usuario,
+los más recientes primero, para sugerirlos en el formulario.
