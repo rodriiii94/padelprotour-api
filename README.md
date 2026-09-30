@@ -69,6 +69,31 @@ La especificación completa (todas las rutas, esquemas de petición/respuesta, a
 
 Autenticación: `Authorization: Bearer <token>` en cada petición a una ruta protegida. El token se obtiene en la respuesta de `POST /register` o `POST /login`.
 
+## Servidor MCP (usar PadelProTour desde Claude)
+
+La API expone también un servidor [MCP](https://modelcontextprotocol.io) en `POST /mcp` (transporte HTTP), hecho con `laravel/mcp`. Permite que Claude consulte y actúe sobre tus ligas en tu nombre, con **los mismos permisos que tienes en la app**: se autentica con el mismo token de Sanctum y reutiliza las mismas policies y reglas de negocio que la API REST.
+
+| Herramienta | Qué hace | Tipo |
+|---|---|---|
+| `list_my_competitions` | Competiciones que organizo o en las que juego, con sus categorías | lectura |
+| `get_competition` | Detalle de una competición: organizador, fechas, sede, categorías e inscritos | lectura |
+| `get_standings` | Clasificación de una categoría | lectura |
+| `list_my_matches` | Mis partidos (próximos, pendientes de validar o jugados) con rivales, sets y reserva de pista | lectura |
+| `propose_match_result` | Propone el resultado de un partido en el que juego (un rival lo confirma después) | escritura |
+| `update_match_booking` | Apunta día/hora, club, pista y enlace de Playtomic de un partido | escritura |
+
+Ninguna herramienta devuelve emails. Sin token, `/mcp` responde `401`; limitado a 60 peticiones por minuto.
+
+**Conectarlo a Claude Code** (el token es el de `POST /api/login`):
+
+```bash
+claude mcp add --transport http padelprotour https://api.padelprotour.net/mcp --header "Authorization: Bearer <token>"
+```
+
+En local, cambia la URL por `http://localhost:8000/mcp`. Para inspeccionarlo sin Claude: `npx @modelcontextprotocol/inspector`.
+
+Código: servidor en [`app/Mcp/Servers/PadelProTourServer.php`](app/Mcp/Servers/PadelProTourServer.php), herramientas en [`app/Mcp/Tools`](app/Mcp/Tools), ruta en [`routes/ai.php`](routes/ai.php) y tests en [`tests/Feature/McpServerTest.php`](tests/Feature/McpServerTest.php).
+
 ## Tests
 
 ```bash

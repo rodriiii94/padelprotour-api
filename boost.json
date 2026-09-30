@@ -11,6 +11,7 @@
         "infer-conventions",
         "laravel-best-practices",
         "testing-best-practices",
+        "mcp-development",
         "pest-testing",
         "tailwindcss-development"
     ]

@@ -25,11 +25,7 @@ trait HasPlayerStats
     {
         $matches = PadelMatch::query()
             ->where('status', 'completed')
-            ->where(fn ($query) => $query
-                ->where('side1_player1_id', $this->id)
-                ->orWhere('side1_player2_id', $this->id)
-                ->orWhere('side2_player1_id', $this->id)
-                ->orWhere('side2_player2_id', $this->id))
+            ->forPlayer($this)
             ->with('matchSets')
             ->get()
             ->sortBy(fn (PadelMatch $match) => $match->scheduled_at ?? $match->updated_at);

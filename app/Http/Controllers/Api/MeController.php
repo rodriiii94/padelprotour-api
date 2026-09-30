@@ -34,15 +34,9 @@ class MeController extends Controller
      */
     public function clubs(Request $request): array
     {
-        $userId = $request->user()->id;
-
         return PadelMatch::query()
+            ->forPlayer($request->user())
             ->whereNotNull('club')
-            ->where(fn ($query) => $query
-                ->where('side1_player1_id', $userId)
-                ->orWhere('side1_player2_id', $userId)
-                ->orWhere('side2_player1_id', $userId)
-                ->orWhere('side2_player2_id', $userId))
             ->groupBy('club')
             ->orderByRaw('MAX(updated_at) DESC')
             ->limit(10)

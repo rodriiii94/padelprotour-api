@@ -12,6 +12,7 @@
         "php": "^8.3",
         "firebase/php-jwt": "^7.1",
         "laravel/framework": "^13.17",
+        "laravel/mcp": "^0.9.6",
         "laravel/reverb": "^1.11",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",

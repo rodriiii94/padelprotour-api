@@ -8,6 +8,15 @@ use App\Models\User;
 class PadelMatchPolicy
 {
     /**
+     * Ver el partido: sus cuatro jugadores o quien pueda ver la competición.
+     */
+    public function view(User $user, PadelMatch $match): bool
+    {
+        return $match->sideOf($user) !== null
+            || $user->can('view', $match->phase->category->competition);
+    }
+
+    /**
      * Leer y escribir en el chat del partido: sus cuatro jugadores y el organizador
      * de la competición.
      */
