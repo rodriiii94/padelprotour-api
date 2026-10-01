@@ -1051,10 +1051,14 @@ paths:
       tags: [Matches]
       summary: Update a match (organizer only)
       description: >
-        Setting status=completed requires winner_side (1 or 2) in the same
-        request. Doing so also recalculates the match's category ranking
-        automatically (same computation as POST /categories/{category}/rankings/recalculate) —
-        no separate call needed.
+        Changing status or winner_side is direct result entry: only the organizer may do it,
+        and only for a match they do not play in (403 otherwise — an organizer who plays the
+        match must use the result-proposal flow so a rival confirms it). Setting
+        status=completed requires the match to be decided (one side has won 2 of its recorded
+        sets; 422 otherwise). The winner is derived from the sets: winner_side is optional
+        and, if sent, must match them. Completing also recalculates the category ranking
+        automatically (same computation as POST /categories/{category}/rankings/recalculate).
+        scheduled_at and court can be edited by the organizer in any case.
       requestBody:
         content:
           application/json:
@@ -1232,7 +1236,7 @@ paths:
       - $ref: "#/components/parameters/MatchId"
     post:
       tags: [Matches]
-      summary: Confirm a proposed result (a rival of the proposer, or the organizer)
+      summary: Confirm a proposed result (a rival of the proposer, or an organizer who does not play the match)
       description: >-
         Moves the match to `completed` and recalculates the category ranking.
         The proposer and their partner cannot confirm. 422 if there is no
@@ -1284,8 +1288,9 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
     post:
       tags: [Match Sets]
-      summary: Record a set score (organizer only)
+      summary: Record a set score (organizer only, and not a player of the match)
       description: >-
+        403 for an organizer who plays this match (they must propose the result instead).
         Best-of-three: set_number must be 1-3. Rejected if a set with the
         same set_number already exists for this match, if the match is
         already decided (one side has already won 2 sets), or if the score
@@ -1328,7 +1333,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     put:
       tags: [Match Sets]
-      summary: Correct a set's score (organizer only)
+      summary: Correct a set's score (organizer only, and not a player of the match)
       description: >-
         Rejected if the resulting score (merging any omitted field with the
         set's current value) is not a valid padel set result.
@@ -1351,7 +1356,7 @@ paths:
         "422": { $ref: "#/components/responses/ValidationError" }
     delete:
       tags: [Match Sets]
-      summary: Delete a set (organizer only)
+      summary: Delete a set (organizer only, and not a player of the match)
       responses:
         "204": { description: Deleted }
         "401": { $ref: "#/components/responses/Unauthorized" }
