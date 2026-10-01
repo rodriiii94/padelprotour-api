@@ -14,7 +14,7 @@ Backend de **PadelProTour**, una plataforma para organizar ligas y torneos de p�
 - **Laravel MCP** — servidor MCP sobre HTTP para Claude
 - **Laravel Reverb** — WebSockets para el chat de competición
 - **Resend** — emails transaccionales (verificación de cuenta)
-- **Sentry** — errores en producción (opcional)
+- **Sentry** — errores en producción
 - **Pest** — tests (270+ tests de feature)
 
 ## Funcionalidades
