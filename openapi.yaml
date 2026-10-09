@@ -1452,6 +1452,11 @@ paths:
     get:
       tags: [Rankings]
       summary: The category's current ranking snapshot, ordered by position
+      description: >-
+        One row per confirmed registration (pair, or player in individual-rotating
+        categories), including those that have not played yet (all zeros), with match, set
+        and game stats. Ties on points break by head-to-head (two-way ties only), then set
+        difference, game difference and games won.
       responses:
         "200":
           description: OK
@@ -1983,9 +1988,24 @@ components:
         category_id: { type: integer }
         pair_id: { type: integer, nullable: true }
         player_id: { type: integer, nullable: true }
-        points: { type: integer }
+        points: { type: integer, description: "3 per win." }
         position: { type: integer }
+        played: { type: integer, description: "Completed matches counted (group and matchday phases only)." }
+        won: { type: integer }
+        lost: { type: integer }
+        sets_won: { type: integer }
+        sets_lost: { type: integer }
+        games_won: { type: integer }
+        games_lost: { type: integer }
         calculated_at: { type: string, format: date-time }
+        pair:
+          allOf: [{ $ref: "#/components/schemas/Pair" }]
+          nullable: true
+          description: Embedded on GET /categories/{category}/rankings, with player1/player2 as {id, name}. Null in individual-rotating categories.
+        player:
+          allOf: [{ $ref: "#/components/schemas/UserSummary" }]
+          nullable: true
+          description: Embedded on GET /categories/{category}/rankings in individual-rotating categories; null otherwise.
 
     ChatMessage:
       type: object

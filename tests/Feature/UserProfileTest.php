@@ -204,9 +204,27 @@ test('finishing first in a category of a finished competition makes you a champi
         'category_id' => Category::factory()->create(['competition_id' => $finished->id])->id,
         'pair_id' => $pair->id,
         'position' => 1,
+        'played' => 3,
     ]);
 
     getJson("/api/users/{$player->id}")->assertOk()->assertJsonPath('achievements', ['champion']);
+});
+
+test('topping a finished table where nobody played does not make you a champion', function () {
+    Sanctum::actingAs(User::factory()->create());
+    $player = User::factory()->create();
+    $pair = Pair::factory()->create(['player1_id' => $player->id]);
+
+    $finished = Competition::factory()->create(['end_date' => now()->subWeek()]);
+    Ranking::factory()->create([
+        'category_id' => Category::factory()->create(['competition_id' => $finished->id])->id,
+        'pair_id' => $pair->id,
+        'position' => 1,
+        'points' => 0,
+        'played' => 0,
+    ]);
+
+    getJson("/api/users/{$player->id}")->assertOk()->assertJsonPath('achievements', []);
 });
 
 test('being first in an ongoing or cancelled competition does not make you a champion', function () {

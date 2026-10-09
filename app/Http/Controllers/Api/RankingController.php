@@ -12,7 +12,10 @@ class RankingController extends Controller
     {
         $this->authorize('view', $category->competition);
 
-        return $category->rankings()->orderBy('position')->get();
+        return $category->rankings()
+            ->with(['player:id,name', 'pair.player1:id,name', 'pair.player2:id,name'])
+            ->orderBy('position')
+            ->get();
     }
 
     public function recalculate(Category $category)

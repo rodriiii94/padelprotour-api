@@ -16,7 +16,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
 #[Name('get_standings')]
-#[Description('Clasificación de una categoría: posición, pareja (o jugador en ligas de rotación) y puntos. Victoria = 3 puntos.')]
+#[Description('Clasificación de una categoría: posición, pareja (o jugador en ligas de rotación), puntos y estadísticas (partidos jugados/ganados/perdidos, sets y juegos a favor y en contra). Victoria = 3 puntos.')]
 class GetStandingsTool extends Tool
 {
     public function handle(Request $request): Response
@@ -37,7 +37,7 @@ class GetStandingsTool extends Tool
                 'name' => $ranking->pair
                     ? ($ranking->pair->name ?: "{$ranking->pair->player1?->name} / {$ranking->pair->player2?->name}")
                     : $ranking->player?->name,
-                'points' => $ranking->points,
+                ...$ranking->only(['points', 'played', 'won', 'lost', 'sets_won', 'sets_lost', 'games_won', 'games_lost']),
             ]);
 
         return Response::json([

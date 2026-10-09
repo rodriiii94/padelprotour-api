@@ -110,7 +110,8 @@ trait HasPlayerStats
 
     /**
      * Primero en la clasificación de una categoría de una competición ya
-     * terminada y no cancelada.
+     * terminada y no cancelada, habiendo jugado (los inscritos salen en la
+     * clasificación aunque no se llegue a jugar ningún partido).
      */
     private function isChampion(): bool
     {
@@ -120,6 +121,7 @@ trait HasPlayerStats
 
         return Ranking::query()
             ->where('position', 1)
+            ->where('played', '>', 0)
             ->where(fn ($query) => $query->where('player_id', $this->id)->orWhereIn('pair_id', $pairIds))
             ->whereHas('category.competition', fn ($query) => $query
                 ->whereNotNull('end_date')

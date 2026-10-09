@@ -7,14 +7,21 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
-#[Fillable(['category_id', 'pair_id', 'player_id', 'points', 'position', 'calculated_at'])]
+#[Fillable([
+    'category_id', 'pair_id', 'player_id', 'points', 'position', 'calculated_at',
+    'played', 'won', 'lost', 'sets_won', 'sets_lost', 'games_won', 'games_lost',
+])]
 class Ranking extends Model
 {
     /** @use HasFactory<RankingFactory> */
     use HasFactory;
+
+    /** Estadísticas que se guardan con cada fila de la clasificación. */
+    private const STAT_KEYS = ['points', 'played', 'won', 'lost', 'sets_won', 'sets_lost', 'games_won', 'games_lost'];
 
     /**
      * Recalcula la clasificación de una categoría desde cero: victoria = 3
@@ -38,7 +45,7 @@ class Ranking extends Model
             ->with('matchSets')
             ->get();
 
-        $stats = [];
+        $stats = self::zeroStatsForRegistered($category, $usesPlayer);
         $headToHead = [];
         $pairCache = [];
 
@@ -59,11 +66,11 @@ class Ranking extends Model
             $side2Games = (int) $match->matchSets->sum('side2_games');
 
             foreach ($side1Keys as $key) {
-                self::addStats($stats, $key, $side1Won ? 3 : 0, $side1Sets, $side2Sets, $side1Games, $side2Games);
+                self::addStats($stats, $key, $side1Won, $side1Sets, $side2Sets, $side1Games, $side2Games);
             }
 
             foreach ($side2Keys as $key) {
-                self::addStats($stats, $key, $side1Won ? 0 : 3, $side2Sets, $side1Sets, $side2Games, $side1Games);
+                self::addStats($stats, $key, ! $side1Won, $side2Sets, $side1Sets, $side2Games, $side1Games);
             }
 
             foreach ($side1Keys as $a) {
@@ -82,7 +89,7 @@ class Ranking extends Model
             return collect($ordered)->values()->map(fn (array $entry, int $index) => $category->rankings()->create([
                 'pair_id' => $usesPlayer ? null : $entry['id'],
                 'player_id' => $usesPlayer ? $entry['id'] : null,
-                'points' => $entry['points'],
+                ...Arr::only($entry, self::STAT_KEYS),
                 'position' => $index + 1,
                 'calculated_at' => $calculatedAt,
             ]));
@@ -126,12 +133,33 @@ class Ranking extends Model
     }
 
     /**
-     * @param  array<int, array{points: int, sets_won: int, sets_lost: int, games_won: int, games_lost: int}>  $stats
+     * Los inscritos confirmados de la categoría, todos a cero: así salen en la clasificación
+     * aunque todavía no hayan jugado.
+     *
+     * @return array<int, array<string, int>>
      */
-    private static function addStats(array &$stats, int $key, int $points, int $setsWon, int $setsLost, int $gamesWon, int $gamesLost): void
+    private static function zeroStatsForRegistered(Category $category, bool $usesPlayer): array
     {
-        $stats[$key] ??= ['points' => 0, 'sets_won' => 0, 'sets_lost' => 0, 'games_won' => 0, 'games_lost' => 0];
-        $stats[$key]['points'] += $points;
+        return $category->registrations()
+            ->where('status', 'confirmed')
+            ->whereNotNull($usesPlayer ? 'player_id' : 'pair_id')
+            ->orderBy('id')
+            ->pluck($usesPlayer ? 'player_id' : 'pair_id')
+            ->mapWithKeys(fn (int $id) => [$id => array_fill_keys(self::STAT_KEYS, 0)])
+            ->all();
+    }
+
+    /**
+     * Suma un partido a las estadísticas de una pareja o jugador. Victoria = 3 puntos.
+     *
+     * @param  array<int, array<string, int>>  $stats
+     */
+    private static function addStats(array &$stats, int $key, bool $won, int $setsWon, int $setsLost, int $gamesWon, int $gamesLost): void
+    {
+        $stats[$key] ??= array_fill_keys(self::STAT_KEYS, 0);
+        $stats[$key]['points'] += $won ? 3 : 0;
+        $stats[$key]['played']++;
+        $stats[$key][$won ? 'won' : 'lost']++;
         $stats[$key]['sets_won'] += $setsWon;
         $stats[$key]['sets_lost'] += $setsLost;
         $stats[$key]['games_won'] += $gamesWon;
@@ -150,9 +178,9 @@ class Ranking extends Model
     }
 
     /**
-     * @param  array<int, array{points: int, sets_won: int, sets_lost: int, games_won: int, games_lost: int}>  $stats
+     * @param  array<int, array<string, int>>  $stats
      * @param  array<int, array<int, array{wins: int, losses: int}>>  $headToHead
-     * @return array<int, array{id: int, points: int, sets_won: int, sets_lost: int, games_won: int, games_lost: int}>
+     * @return list<array<string, int>> cada entrada lleva `id` además de las estadísticas
      */
     private static function orderEntities(array $stats, array $headToHead): array
     {
