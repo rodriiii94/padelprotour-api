@@ -219,3 +219,68 @@ test('ranking rows embed the pair with its players\' names, never their emails',
         ->and($row['pair']['player2'])->toBe(['id' => $pair->player2_id, 'name' => $pair->player2->name])
         ->and(json_encode($row))->not->toContain($pair->player1->email);
 });
+
+test('ranking rows carry the recent form and each pair\'s matches from its own side', function () {
+    $organizer = User::factory()->create();
+    $competition = Competition::factory()->create(['organizer_id' => $organizer->id]);
+    $category = Category::factory()->create(['competition_id' => $competition->id, 'registration_mode' => null]);
+    $group = Phase::factory()->create(['category_id' => $category->id, 'type' => 'group', 'name' => 'Jornada 1']);
+    $pairA = Pair::factory()->create();
+    $pairB = Pair::factory()->create(['name' => 'Towers']);
+    $aPlayers = [$pairA->player1_id, $pairA->player2_id];
+    $bPlayers = [$pairB->player1_id, $pairB->player2_id];
+
+    $won = createCompletedMatch($group, [...$aPlayers, ...$bPlayers], 1, [[6, 2], [6, 3]]);
+    $won->update(['scheduled_at' => now()->subDays(3)]);
+    // A juega en el lado 2 y pierde: el marcador se da desde su lado.
+    $lost = createCompletedMatch($group, [...$bPlayers, ...$aPlayers], 1, [[6, 4], [3, 6], [7, 5]]);
+    $lost->update(['scheduled_at' => now()->subDay()]);
+    $upcoming = PadelMatch::factory()->create([
+        'phase_id' => $group->id, 'status' => 'scheduled', 'scheduled_at' => now()->addDays(2), 'club' => 'Club Norte',
+        'side1_player1_id' => $aPlayers[0], 'side1_player2_id' => $aPlayers[1],
+        'side2_player1_id' => $bPlayers[0], 'side2_player2_id' => $bPlayers[1],
+    ]);
+
+    Sanctum::actingAs($organizer);
+    postJson("/api/categories/{$category->id}/rankings/recalculate")->assertOk();
+    $rows = collect(getJson("/api/categories/{$category->id}/rankings")->assertOk()->json())->keyBy('pair_id');
+
+    expect($rows[$pairA->id]['form'])->toBe(['W', 'L'])
+        ->and($rows[$pairB->id]['form'])->toBe(['L', 'W'])
+        ->and(collect($rows[$pairA->id]['matches'])->pluck('id')->all())->toBe([$won->id, $lost->id, $upcoming->id])
+        ->and($rows[$pairA->id]['matches'][0])->toMatchArray([
+            'phase' => 'Jornada 1', 'status' => 'completed', 'result' => 'won', 'score' => '6-2 6-3', 'opponent' => 'Towers',
+        ])
+        ->and($rows[$pairA->id]['matches'][1])->toMatchArray(['result' => 'lost', 'score' => '4-6 6-3 5-7'])
+        ->and($rows[$pairA->id]['matches'][2])->toMatchArray(['status' => 'scheduled', 'result' => null, 'score' => null, 'club' => 'Club Norte'])
+        ->and($rows[$pairB->id]['matches'][0]['opponent'])->toBe("{$pairA->player1->name} / {$pairA->player2->name}");
+});
+
+test('form only counts confirmed league results and keeps the last five', function () {
+    $organizer = User::factory()->create();
+    $competition = Competition::factory()->create(['organizer_id' => $organizer->id]);
+    $category = Category::factory()->create(['competition_id' => $competition->id, 'registration_mode' => null]);
+    $group = Phase::factory()->create(['category_id' => $category->id, 'type' => 'group']);
+    $knockout = Phase::factory()->create(['category_id' => $category->id, 'type' => 'elimination_round']);
+    $pairA = Pair::factory()->create();
+    $pairB = Pair::factory()->create();
+    $players = [$pairA->player1_id, $pairA->player2_id, $pairB->player1_id, $pairB->player2_id];
+
+    foreach ([1, 1, 2, 1, 1, 1] as $daysAgo => $winner) {
+        createCompletedMatch($group, $players, $winner, $winner === 1 ? [[6, 0], [6, 0]] : [[0, 6], [0, 6]])
+            ->update(['scheduled_at' => now()->subDays(10 - $daysAgo)]);
+    }
+    createCompletedMatch($knockout, $players, 2, [[0, 6], [0, 6]])->update(['scheduled_at' => now()->subHour()]);
+    PadelMatch::factory()->create([
+        'phase_id' => $group->id, 'status' => 'pending_validation', 'winner_side' => 2, 'scheduled_at' => now(),
+        'side1_player1_id' => $players[0], 'side1_player2_id' => $players[1],
+        'side2_player1_id' => $players[2], 'side2_player2_id' => $players[3],
+    ]);
+
+    Sanctum::actingAs($organizer);
+    postJson("/api/categories/{$category->id}/rankings/recalculate")->assertOk();
+    $row = collect(getJson("/api/categories/{$category->id}/rankings")->assertOk()->json())->firstWhere('pair_id', $pairA->id);
+
+    expect($row['form'])->toBe(['W', 'L', 'W', 'W', 'W'])
+        ->and($row['matches'])->toHaveCount(8);
+});

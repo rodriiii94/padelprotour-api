@@ -1998,6 +1998,26 @@ components:
         games_won: { type: integer }
         games_lost: { type: integer }
         calculated_at: { type: string, format: date-time }
+        form:
+          type: array
+          items: { type: string, enum: [W, L] }
+          description: Only on GET /categories/{category}/rankings. Last 5 confirmed league results (group and matchday phases), oldest first.
+        matches:
+          type: array
+          description: Only on GET /categories/{category}/rankings. Every match of this pair (or player) in the category, seen from its side — played ones in chronological order, then the ones still to play.
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              phase: { type: string }
+              status: { $ref: "#/components/schemas/MatchStatus" }
+              scheduled_at: { type: string, format: date-time, nullable: true }
+              club: { type: string, nullable: true }
+              court: { type: string, nullable: true }
+              opponent: { type: string, description: "The rival pair's name, or its two players as \"A / B\"." }
+              partner: { type: string, nullable: true, description: "Teammate in that match; individual-rotating categories only." }
+              result: { type: string, enum: [won, lost], nullable: true, description: "Null until the result is confirmed." }
+              score: { type: string, nullable: true, description: "Sets with this side's games first, e.g. \"6-3 5-7 6-4\". Present once a result is proposed." }
         pair:
           allOf: [{ $ref: "#/components/schemas/Pair" }]
           nullable: true

@@ -23,6 +23,12 @@ class Ranking extends Model
     /** Estadísticas que se guardan con cada fila de la clasificación. */
     private const STAT_KEYS = ['points', 'played', 'won', 'lost', 'sets_won', 'sets_lost', 'games_won', 'games_lost'];
 
+    /** Partidos que muestra la racha: los últimos confirmados que puntúan. */
+    private const FORM_LENGTH = 5;
+
+    /** Fases cuyos partidos reparten puntos de liga (las eliminatorias no). */
+    private const LEAGUE_PHASE_TYPES = ['group', 'matchday'];
+
     /**
      * Recalcula la clasificación de una categoría desde cero: victoria = 3
      * puntos, derrota = 0. Solo cuentan partidos `completed` de fases
@@ -40,7 +46,7 @@ class Ranking extends Model
         $usesPlayer = $category->registration_mode === 'individual_rotating';
 
         $matches = PadelMatch::query()
-            ->whereHas('phase', fn ($query) => $query->where('category_id', $category->id)->whereIn('type', ['group', 'matchday']))
+            ->whereHas('phase', fn ($query) => $query->where('category_id', $category->id)->whereIn('type', self::LEAGUE_PHASE_TYPES))
             ->where('status', 'completed')
             ->with('matchSets')
             ->get();
@@ -94,6 +100,105 @@ class Ranking extends Model
                 'calculated_at' => $calculatedAt,
             ]));
         });
+    }
+
+    /**
+     * Los partidos de la categoría vistos desde cada pareja (o jugador, en ligas de rotación):
+     * rival, marcador con sus juegos primero y si lo ganó, en orden cronológico con los que
+     * faltan por jugar al final. `form` son sus últimos resultados que puntúan, del más
+     * antiguo al más reciente.
+     *
+     * @return array<int, array{form: list<string>, matches: list<array<string, mixed>>}>
+     */
+    public static function historyForCategory(Category $category): array
+    {
+        $usesPlayer = $category->registration_mode === 'individual_rotating';
+
+        $matches = PadelMatch::query()
+            ->whereHas('phase', fn ($query) => $query->where('category_id', $category->id))
+            ->with(['matchSets', 'phase:id,name,type', 'side1Player1:id,name', 'side1Player2:id,name', 'side2Player1:id,name', 'side2Player2:id,name'])
+            ->get()
+            ->sortBy(fn (PadelMatch $match) => [
+                self::hasResult($match) ? 0 : 1,
+                ($match->scheduled_at ?? (self::hasResult($match) ? $match->updated_at : null))?->getTimestamp() ?? PHP_INT_MAX,
+                $match->id,
+            ]);
+
+        $pairCache = [];
+        $sides = $matches->map(fn (PadelMatch $match) => [
+            1 => self::sideKeys($match, 1, $usesPlayer, $pairCache),
+            2 => self::sideKeys($match, 2, $usesPlayer, $pairCache),
+        ]);
+        $pairNames = $usesPlayer ? [] : Pair::query()->whereKey($sides->flatten()->unique())->pluck('name', 'id')->all();
+
+        $history = [];
+
+        foreach ($matches as $index => $match) {
+            foreach ([1, 2] as $side) {
+                $rivalSide = $side === 1 ? 2 : 1;
+                $rivalPairId = $usesPlayer ? null : ($sides[$index][$rivalSide][0] ?? null);
+                $won = $match->status === 'completed' ? $match->winner_side === $side : null;
+
+                foreach ($sides[$index][$side] as $key) {
+                    $history[$key] ??= ['form' => [], 'matches' => []];
+                    $history[$key]['matches'][] = [
+                        'id' => $match->id,
+                        'phase' => $match->phase->name,
+                        'status' => $match->status,
+                        'scheduled_at' => $match->scheduled_at,
+                        'club' => $match->club,
+                        'court' => $match->court,
+                        'opponent' => ($rivalPairId !== null ? $pairNames[$rivalPairId] ?? null : null) ?: self::sideNames($match, $rivalSide),
+                        'partner' => $usesPlayer ? self::partnerName($match, $side, $key) : null,
+                        'result' => $won === null ? null : ($won ? 'won' : 'lost'),
+                        'score' => self::hasResult($match) ? self::scoreFor($match, $side) : null,
+                    ];
+
+                    if ($won !== null && in_array($match->phase->type, self::LEAGUE_PHASE_TYPES, true)) {
+                        $history[$key]['form'][] = $won ? 'W' : 'L';
+                    }
+                }
+            }
+        }
+
+        return array_map(
+            fn (array $entry) => [...$entry, 'form' => array_slice($entry['form'], -self::FORM_LENGTH)],
+            $history,
+        );
+    }
+
+    private static function hasResult(PadelMatch $match): bool
+    {
+        return in_array($match->status, ['completed', 'pending_validation'], true);
+    }
+
+    /**
+     * "Ana / Luis": los dos jugadores de ese lado.
+     */
+    private static function sideNames(PadelMatch $match, int $side): string
+    {
+        $players = $side === 1 ? [$match->side1Player1, $match->side1Player2] : [$match->side2Player1, $match->side2Player2];
+
+        return collect($players)->map(fn (?User $player) => $player?->name)->filter()->implode(' / ');
+    }
+
+    private static function partnerName(PadelMatch $match, int $side, int $playerId): ?string
+    {
+        $players = $side === 1 ? [$match->side1Player1, $match->side1Player2] : [$match->side2Player1, $match->side2Player2];
+
+        return collect($players)->first(fn (?User $player) => $player !== null && $player->id !== $playerId)?->name;
+    }
+
+    /**
+     * "6-3 7-5": los sets con los juegos de ese lado primero.
+     */
+    private static function scoreFor(PadelMatch $match, int $side): ?string
+    {
+        $score = $match->matchSets->sortBy('set_number')
+            ->map(fn (MatchSet $set) => $side === 1 ? "{$set->side1_games}-{$set->side2_games}" : "{$set->side2_games}-{$set->side1_games}")
+            ->implode(' ');
+
+        return $score === '' ? null : $score;
     }
 
     /**

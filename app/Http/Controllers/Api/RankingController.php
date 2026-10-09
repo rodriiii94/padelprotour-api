@@ -12,10 +12,17 @@ class RankingController extends Controller
     {
         $this->authorize('view', $category->competition);
 
+        $history = Ranking::historyForCategory($category);
+
         return $category->rankings()
             ->with(['player:id,name', 'pair.player1:id,name', 'pair.player2:id,name'])
             ->orderBy('position')
-            ->get();
+            ->get()
+            ->each(function (Ranking $ranking) use ($history): void {
+                $entry = $history[$ranking->pair_id ?? $ranking->player_id] ?? ['form' => [], 'matches' => []];
+                $ranking->setAttribute('form', $entry['form']);
+                $ranking->setAttribute('matches', $entry['matches']);
+            });
     }
 
     public function recalculate(Category $category)

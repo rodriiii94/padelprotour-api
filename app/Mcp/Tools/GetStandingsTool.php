@@ -16,7 +16,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
 #[Name('get_standings')]
-#[Description('Clasificación de una categoría: posición, pareja (o jugador en ligas de rotación), puntos y estadísticas (partidos jugados/ganados/perdidos, sets y juegos a favor y en contra). Victoria = 3 puntos.')]
+#[Description('Clasificación de una categoría: posición, pareja (o jugador en ligas de rotación), puntos, estadísticas (partidos jugados/ganados/perdidos, sets y juegos a favor y en contra) y racha de los últimos 5 partidos (W ganado, L perdido, del más antiguo al más reciente). Victoria = 3 puntos.')]
 class GetStandingsTool extends Tool
 {
     public function handle(Request $request): Response
@@ -28,6 +28,8 @@ class GetStandingsTool extends Tool
             return Response::error('No existe esa categoría o no tienes acceso a ella.');
         }
 
+        $history = Ranking::historyForCategory($category);
+
         $standings = $category->rankings()
             ->with(['pair.player1:id,name', 'pair.player2:id,name', 'player:id,name'])
             ->orderBy('position')
@@ -38,6 +40,7 @@ class GetStandingsTool extends Tool
                     ? ($ranking->pair->name ?: "{$ranking->pair->player1?->name} / {$ranking->pair->player2?->name}")
                     : $ranking->player?->name,
                 ...$ranking->only(['points', 'played', 'won', 'lost', 'sets_won', 'sets_lost', 'games_won', 'games_lost']),
+                'form' => implode('', $history[$ranking->pair_id ?? $ranking->player_id]['form'] ?? []),
             ]);
 
         return Response::json([
