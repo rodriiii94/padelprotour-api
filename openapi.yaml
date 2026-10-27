@@ -1477,9 +1477,10 @@ paths:
         matches. Results are proposed and confirmed like any match (including the 48 h
         auto-confirmation); when both matches feeding a slot are completed, the next-round
         match is created with the two winners. Playoff matches do not add league points, and
-        the final's winner is the category champion. 422 if the category already has a
-        playoff, has results pending validation, is not fixed-pair, the competition is
-        cancelled, or there are fewer ranked pairs than `size`.
+        the final's winner is the category champion. 422 if the league is not over (any
+        league match without a confirmed result, including results pending validation), the
+        category already has a playoff, is not fixed-pair, the competition is cancelled, or
+        there are fewer ranked pairs than `size`.
       requestBody:
         required: true
         content:

@@ -102,7 +102,7 @@ test('an 8-pair playoff keeps the top two seeds apart until the final', function
         ->and($quarters)->toBe([[$seed(1), $seed(8)], [$seed(4), $seed(5)], [$seed(2), $seed(7)], [$seed(3), $seed(6)]]);
 });
 
-test('creating a playoff is refused when it does not make sense', function () {
+test('creating a playoff is refused when it does not make sense, including before the league is over', function () {
     ['organizer' => $organizer, 'category' => $category, 'pairs' => $pairs] = finishedLeague(3);
 
     Sanctum::actingAs(User::factory()->create());
@@ -124,6 +124,11 @@ test('creating a playoff is refused when it does not make sense', function () {
         ->assertUnprocessable()->assertJsonValidationErrors('playoff');
 
     $pending->update(['status' => 'scheduled', 'winner_side' => null]);
+    postJson("/api/categories/{$category->id}/playoff", ['size' => 4])
+        ->assertUnprocessable()
+        ->assertJsonPath('errors.playoff.0', 'La liga no ha terminado: queda 1 partido sin resultado confirmado.');
+
+    $pending->update(['status' => 'completed', 'winner_side' => 1]);
     postJson("/api/categories/{$category->id}/playoff", ['size' => 4])->assertCreated();
     postJson("/api/categories/{$category->id}/playoff", ['size' => 4])
         ->assertUnprocessable()->assertJsonValidationErrors('playoff');

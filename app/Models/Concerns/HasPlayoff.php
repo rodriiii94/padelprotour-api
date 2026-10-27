@@ -53,8 +53,8 @@ trait HasPlayoff
     }
 
     /**
-     * Crea el cuadro con las `$size` primeras de la clasificación y los partidos de la primera
-     * ronda. Las rondas siguientes se crean vacías y se van llenando con los ganadores.
+     * Crea el cuadro con las `$size` primeras de la clasificación final (todos los partidos de
+     * liga deben tener resultado confirmado) y los partidos de la primera ronda. Las rondas siguientes se crean vacías y se van llenando con los ganadores.
      *
      * @throws ValidationException
      */
@@ -68,14 +68,19 @@ trait HasPlayoff
             throw ValidationException::withMessages(['playoff' => ['Esta categoría ya tiene playoff.']]);
         }
 
-        $pendingResults = PadelMatch::query()
-            ->whereHas('phase', fn ($query) => $query->where('category_id', $this->id))
-            ->where('status', 'pending_validation')
+        // Solo con la liga terminada: los cruces salen de la clasificación final, que no puede
+        // cambiar después (un partido sin jugar o pendiente de validar aún podría moverla).
+        $unfinished = PadelMatch::query()
+            ->whereHas('phase', fn ($query) => $query
+                ->where('category_id', $this->id)
+                ->where('type', '!=', self::PLAYOFF_PHASE_TYPE))
+            ->where('status', '!=', 'completed')
             ->count();
 
-        if ($pendingResults > 0) {
-            throw ValidationException::withMessages(['playoff' => [
-                "Hay {$pendingResults} resultado(s) pendiente(s) de validar: la clasificación aún puede cambiar.",
+        if ($unfinished > 0) {
+            throw ValidationException::withMessages(['playoff' => [$unfinished === 1
+                ? 'La liga no ha terminado: queda 1 partido sin resultado confirmado.'
+                : "La liga no ha terminado: quedan {$unfinished} partidos sin resultado confirmado.",
             ]]);
         }
 
