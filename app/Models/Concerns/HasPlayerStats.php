@@ -109,11 +109,31 @@ trait HasPlayerStats
     }
 
     /**
-     * Primero en la clasificación de una categoría de una competición ya
-     * terminada y no cancelada, habiendo jugado (los inscritos salen en la
-     * clasificación aunque no se llegue a jugar ningún partido).
+     * Ganó la final de un playoff, o, en una categoría sin playoff, acabó primero en la
+     * clasificación de una competición ya terminada (habiendo jugado: los inscritos salen en
+     * la clasificación aunque no se llegue a jugar ningún partido). Nunca en una cancelada.
      */
     private function isChampion(): bool
+    {
+        return $this->wonAPlayoffFinal() || $this->toppedAFinishedLeague();
+    }
+
+    private function wonAPlayoffFinal(): bool
+    {
+        return PadelMatch::query()
+            ->forPlayer($this)
+            ->where('status', 'completed')
+            ->where('bracket_position', 0)
+            ->whereHas('phase', fn ($query) => $query
+                ->where('type', Category::PLAYOFF_PHASE_TYPE)
+                ->whereHas('category.competition', fn ($competition) => $competition->whereNull('cancelled_at')))
+            ->with('phase')
+            ->get()
+            ->contains(fn (PadelMatch $match) => $match->sideOf($this) === $match->winner_side
+                && $match->phase->category->playoffPhases()->last()?->is($match->phase));
+    }
+
+    private function toppedAFinishedLeague(): bool
     {
         $pairIds = Pair::query()
             ->where(fn ($query) => $query->where('player1_id', $this->id)->orWhere('player2_id', $this->id))
@@ -123,6 +143,7 @@ trait HasPlayerStats
             ->where('position', 1)
             ->where('played', '>', 0)
             ->where(fn ($query) => $query->where('player_id', $this->id)->orWhereIn('pair_id', $pairIds))
+            ->whereDoesntHave('category.phases', fn ($query) => $query->where('type', Category::PLAYOFF_PHASE_TYPE))
             ->whereHas('category.competition', fn ($query) => $query
                 ->whereNotNull('end_date')
                 ->where('end_date', '<', today())

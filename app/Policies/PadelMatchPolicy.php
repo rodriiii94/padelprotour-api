@@ -47,8 +47,12 @@ class PadelMatchPolicy
             return Response::deny('Solo el organizador puede anotar el resultado directamente.');
         }
 
-        return $match->sideOf($user) === null
-            ? Response::allow()
-            : Response::deny('Juegas este partido: propón el resultado y que lo confirme un rival.');
+        if ($match->sideOf($user) !== null) {
+            return Response::deny('Juegas este partido: propón el resultado y que lo confirme un rival.');
+        }
+
+        return $match->hasAdvanced()
+            ? Response::deny('El ganador ya ha pasado a la siguiente ronda: no se puede cambiar este resultado.')
+            : Response::allow();
     }
 }

@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\MatchSetController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\PairController;
 use App\Http\Controllers\Api\PhaseController;
+use App\Http\Controllers\Api\PlayoffController;
 use App\Http\Controllers\Api\RankingController;
 use App\Http\Controllers\Api\RegistrationController;
 use App\Http\Controllers\Api\RoundRobinController;
@@ -65,6 +66,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('phases.matches', MatchController::class)->shallow();
     Route::apiResource('phases.matchday-pairings', MatchdayPairingController::class)->shallow();
     Route::post('/categories/{category}/round-robin', [RoundRobinController::class, 'generate']);
+    Route::get('/categories/{category}/playoff', [PlayoffController::class, 'show']);
+    Route::post('/categories/{category}/playoff', [PlayoffController::class, 'store']);
+    Route::delete('/categories/{category}/playoff', [PlayoffController::class, 'destroy']);
     Route::apiResource('matches.sets', MatchSetController::class)->shallow();
     Route::get('/matches/{match}/messages', [MatchMessageController::class, 'index']);
     Route::post('/matches/{match}/messages', [MatchMessageController::class, 'store'])->middleware('throttle:60,1');

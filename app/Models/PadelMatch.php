@@ -17,6 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 #[Fillable([
     'phase_id',
+    'bracket_position',
     'side1_player1_id',
     'side1_player2_id',
     'side2_player1_id',
@@ -69,6 +70,50 @@ class PadelMatch extends Model
             'scheduled_at' => 'datetime',
             'result_proposed_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // Da igual por qué camino se confirme un resultado de playoff (lo confirma un rival, se
+        // confirma solo a las 48 h o lo anota el organizador): el ganador pasa de ronda.
+        static::updated(function (PadelMatch $match): void {
+            if ($match->wasChanged('status') && $match->status === 'completed' && $match->bracket_position !== null) {
+                $match->phase->category->advancePlayoff($match);
+            }
+        });
+    }
+
+    /** La pareja que juega en ese lado (1 o 2). */
+    public function sidePair(int $side): ?Pair
+    {
+        return $side === 1
+            ? Pair::forPlayers($this->side1_player1_id, $this->side1_player2_id)
+            : Pair::forPlayers($this->side2_player1_id, $this->side2_player2_id);
+    }
+
+    public function winningPair(): ?Pair
+    {
+        return $this->winner_side ? $this->sidePair($this->winner_side) : null;
+    }
+
+    /**
+     * Partido de playoff cuyo ganador ya tiene creado el cruce de la ronda siguiente: su
+     * resultado ya no se puede cambiar.
+     */
+    public function hasAdvanced(): bool
+    {
+        if ($this->bracket_position === null) {
+            return false;
+        }
+
+        return PadelMatch::query()
+            ->whereNotNull('bracket_position')
+            ->where('bracket_position', intdiv($this->bracket_position, 2))
+            ->whereHas('phase', fn (Builder $query) => $query
+                ->where('category_id', $this->phase->category_id)
+                ->where('type', Category::PLAYOFF_PHASE_TYPE)
+                ->where('order', '>', $this->phase->order))
+            ->exists();
     }
 
     /**

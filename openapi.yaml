@@ -28,6 +28,8 @@ tags:
   - name: Match Sets
   - name: Matchday Pairings
   - name: Rankings
+  - name: Playoff
+    description: Optional knockout rounds at the end of a fixed-pair league.
   - name: Chat Messages
 
 paths:
@@ -1446,6 +1448,65 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
+  /categories/{category}/playoff:
+    parameters:
+      - $ref: "#/components/parameters/CategoryId"
+    get:
+      tags: [Playoff]
+      summary: The category's playoff bracket
+      description: >-
+        Every round with all its slots. Slots whose match does not exist yet carry the pair that
+        already qualified for them, or {placeholder} ("Ganador de Semifinal 1"). Scores are from
+        side 1. 404 when the category has no playoff.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlayoffBracket" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Playoff]
+      summary: Create an optional playoff from the standings (organizer only)
+      description: >-
+        Fixed-pair categories only. Takes the top `size` pairs of the freshly recalculated
+        standings into single-match knockout rounds (1v4, 2v3 / 1v8, 4v5, 2v7, 3v6), creates
+        one elimination_round phase per round after the league phases and the first-round
+        matches. Results are proposed and confirmed like any match (including the 48 h
+        auto-confirmation); when both matches feeding a slot are completed, the next-round
+        match is created with the two winners. Playoff matches do not add league points, and
+        the final's winner is the category champion. 422 if the category already has a
+        playoff, has results pending validation, is not fixed-pair, the competition is
+        cancelled, or there are fewer ranked pairs than `size`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [size]
+              properties:
+                size: { type: integer, enum: [4, 8] }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlayoffBracket" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Playoff]
+      summary: Remove the playoff while no playoff match has a result (organizer only)
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
   /categories/{category}/rankings:
     parameters:
       - $ref: "#/components/parameters/CategoryId"
@@ -1943,6 +2004,7 @@ components:
             phase_id: { type: integer }
             status: { $ref: "#/components/schemas/MatchStatus" }
             winner_side: { type: integer, enum: [1, 2], nullable: true }
+            bracket_position: { type: integer, nullable: true, description: "Slot in its playoff round (0, 1, ...); null outside a playoff." }
             result_proposed_by: { type: integer, nullable: true, description: "Player who proposed the result while status is pending_validation; null otherwise." }
             club: { type: string, nullable: true, description: "Club where the court is booked. Set via PUT /matches/{match}/booking." }
             playtomic_url: { type: string, nullable: true, description: "https link to the match in Playtomic (only opened, never fetched). Set via PUT /matches/{match}/booking." }
@@ -1980,6 +2042,49 @@ components:
         player2_id: { type: integer }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+
+    PlayoffSide:
+      type: object
+      description: A pair in a slot, or a placeholder when it is not decided yet.
+      properties:
+        seed: { type: integer, nullable: true, description: "League position it entered the playoff with." }
+        pair_id: { type: integer, nullable: true }
+        name: { type: string, description: "Pair name, or its two players as \"A / B\"." }
+        placeholder: { type: string, description: "Only on undecided slots, e.g. \"Ganador de Semifinal 1\"." }
+
+    PlayoffBracket:
+      type: object
+      properties:
+        size: { type: integer, enum: [4, 8] }
+        champion:
+          type: object
+          nullable: true
+          properties:
+            pair_id: { type: integer }
+            name: { type: string }
+        rounds:
+          type: array
+          items:
+            type: object
+            properties:
+              phase_id: { type: integer }
+              name: { type: string, description: "Cuartos de final, Semifinales or Final." }
+              matches:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    position: { type: integer }
+                    match_id: { type: integer, nullable: true, description: "Null until both qualifiers are known." }
+                    status: { allOf: [{ $ref: "#/components/schemas/MatchStatus" }], nullable: true }
+                    winner_side: { type: integer, enum: [1, 2], nullable: true, description: "Once the result is confirmed." }
+                    scheduled_at: { type: string, format: date-time, nullable: true }
+                    score: { type: string, nullable: true, description: "Side 1 games first, e.g. \"6-3 7-5\"." }
+                    sides:
+                      type: array
+                      minItems: 2
+                      maxItems: 2
+                      items: { $ref: "#/components/schemas/PlayoffSide" }
 
     Ranking:
       type: object

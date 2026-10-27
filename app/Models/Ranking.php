@@ -229,12 +229,7 @@ class Ranking extends Model
             return $cache[$cacheKey];
         }
 
-        $pair = Pair::query()
-            ->where(fn ($query) => $query->where('player1_id', $player1)->where('player2_id', $player2))
-            ->orWhere(fn ($query) => $query->where('player1_id', $player2)->where('player2_id', $player1))
-            ->first();
-
-        return $cache[$cacheKey] = $pair?->id;
+        return $cache[$cacheKey] = Pair::forPlayers($player1, $player2)?->id;
     }
 
     /**
